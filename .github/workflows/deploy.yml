@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -29,6 +29,13 @@ jobs:
 
       - name: Install
         run: npm ci
+
+      # ✅ 不上传 .env.local，但在构建时生成它（不改前端代码）
+      - name: Create .env.local
+        run: |
+          echo "VITE_API_BASE=https://visiont-backend-sptpcpjygm.cn-beijing.fcapp.run" > .env.local
+          echo "Injected env:"
+          cat .env.local
 
       - name: Build
         run: npm run build

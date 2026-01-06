@@ -2,10 +2,9 @@
   <section class="card">
     <header class="head">
       <div class="titleWrap">
-        <h1>语音对话（多轮收集故事需求）</h1>
-        <p class="muted">按住说话 → 松开发送 → ASR → LLM（带历史追问）→ TTS（wav）→ 播放</p>
+        <h1 class="title-fun">🎤 和小助手聊天</h1>
+        <p class="subtitle">按住按钮说话，告诉我你想要什么样的故事～</p>
       </div>
-      <div class="badge">session: {{ sessionIdShort }}</div>
     </header>
 
     <!-- 操作区（固定） -->
@@ -27,39 +26,24 @@
         </button>
 
         <button class="btn ghost" type="button" @click="resetUI" :disabled="isRecording || busy">清空</button>
-        <button class="btn ghost" type="button" @click="fetchSessionOnce({ forceRaw: true })" :disabled="isRecording || busy">
-          刷新 session
-        </button>
-        <button class="btn" type="button" @click="replay" :disabled="!lastAssistantAudioUrl">重播语音</button>
-
-        <button class="btn ghost" type="button" @click="showRaw = !showRaw" :disabled="busy">
-          {{ showRaw ? "隐藏调试" : "显示调试" }}
-        </button>
+        <button class="btn" type="button" @click="replay" :disabled="!lastAssistantAudioUrl">🔊 重播</button>
       </div>
 
-      <!-- 进度条 -->
-      <div class="progressWrap" v-if="taskId">
-        <div class="progressMeta">
-          <span class="muted2">task</span>
-          <code class="mono">{{ taskId }}</code>
-          <span class="muted2">status</span>
-          <code class="mono">{{ taskStatus || "-" }}</code>
-          <span class="muted2">stage</span>
-          <code class="mono">{{ taskStage || "-" }}</code>
-          <span class="muted2">progress</span>
-          <code class="mono">{{ taskProgress != null ? taskProgress + "%" : "-" }}</code>
-        </div>
-
-        <div class="bar" aria-label="progress">
-          <div class="barInner" :style="{ width: (taskProgress || 0) + '%' }"></div>
-        </div>
-      </div>
+      <!-- 加载状态 -->
+      <LoadingState
+        v-if="busy && taskId"
+        :stage="currentStage"
+        :message="friendlyMessage"
+        :progress="taskProgress"
+        :show-progress="taskProgress > 0"
+        small
+      />
 
       <div class="hint">
-        提示：首次需要麦克风权限；建议在 HTTPS 或 localhost 下测试。若自动播放失败，点“重播语音”即可。
+        提示：首次需要麦克风权限；建议在 HTTPS 或 localhost 下测试。若自动播放失败，点"重播"即可。
       </div>
 
-      <div v-if="statusText" class="status" :class="{ error: statusType === 'error' }">
+      <div v-if="statusText && !busy" class="status" :class="{ error: statusType === 'error' }">
         {{ statusText }}
       </div>
 
@@ -67,15 +51,9 @@
       <div class="audioWrap" v-if="lastAssistantAudioUrl">
         <div class="audioMeta">
           <span class="dot"></span>
-          <span>本轮语音已生成（wav）</span>
-          <span v-if="lastAssistantAudioExpiresAt" class="muted2">· expiresAt: {{ String(lastAssistantAudioExpiresAt) }}</span>
+          <span>本轮语音已生成</span>
         </div>
         <audio ref="audioRef" class="audioEl" controls preload="auto" />
-      </div>
-
-      <div v-if="showRaw" class="debugBox">
-        <div class="debugTitle">调试：/api/session 返回</div>
-        <pre class="debugPre">{{ rawSessionText || "(尚未拉取)" }}</pre>
       </div>
     </div>
 
@@ -185,21 +163,8 @@
       </div>
     </div>
 
-    <!-- ✅ 底部导航条：上一步/下一步（固定在卡片底部，不会被顶部 StepProgress 挡） -->
-    <footer class="navBar">
-      <button class="btn ghost" type="button" @click="goPrev" :disabled="!prevStep">
-        ← 上一步
-      </button>
-
-      <div class="navHint">
-        <span class="muted2">当前步骤：</span><b>{{ currentStepTitle }}</b>
-        <span class="muted2"> · 下一步：</span><b>{{ nextStep?.title || "-" }}</b>
-      </div>
-
-      <button class="btn next" type="button" @click="goNext" :disabled="!nextStep || !storyReq?.done">
-        下一步 →
-      </button>
-    </footer>
+    <!-- 底部导航 -->
+    <NavigationBar :disable-next="!storyReq?.done" />
   </section>
 </template>
 
@@ -207,6 +172,8 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { steps } from "../router";
+import NavigationBar from "../components/NavigationBar.vue";
+import LoadingState from "../components/LoadingState.vue";
 
 const router = useRouter();
 const route = useRoute();
@@ -231,32 +198,6 @@ function getOrCreateSessionId() {
 }
 
 const sessionId = ref(getOrCreateSessionId());
-const sessionIdShort = computed(() => sessionId.value.slice(0, 8) + "...");
-
-/** ===================== Step routing (自动，不用你改路径) ===================== */
-const currentIndex = computed(() => {
-  const idx = steps.findIndex((s) => s.path === route.path);
-  return idx === -1 ? 0 : idx;
-});
-const prevStep = computed(() => (currentIndex.value > 0 ? steps[currentIndex.value - 1] : null));
-const nextStep = computed(() => (currentIndex.value < steps.length - 1 ? steps[currentIndex.value + 1] : null));
-const currentStepTitle = computed(() => steps[currentIndex.value]?.title || "语音对话");
-
-function goPrev() {
-  if (!prevStep.value) return;
-  router.push(prevStep.value.path);
-}
-
-function goNext() {
-  if (!nextStep.value) return;
-  // ✅ dialog 的下一步要求：故事需求收集完成
-  if (!storyReq.value?.done) {
-    statusText.value = "还没收集完成～再说一句，让小助手把故事需求补齐 ✅";
-    statusType.value = "info";
-    return;
-  }
-  router.push({ path: nextStep.value.path, query: { sessionId: sessionId.value } });
-}
 
 /** ===================== UI State ===================== */
 const busy = ref(false);
@@ -270,6 +211,31 @@ const taskStatus = ref("");
 const taskStage = ref("");
 const taskProgress = ref(null);
 const taskError = ref("");
+
+// 友好文案映射
+const friendlyMessages = {
+  'ASR': '正在听你说话... 👂',
+  'LLM': '小助手正在思考回答... 🤔',
+  'TTS': '小助手正在说话... 🗣️',
+  'PENDING': '准备中... ⏳',
+  'RUNNING': '处理中... ✨',
+  'DONE': '完成！🎉'
+};
+
+const friendlyMessage = computed(() => {
+  const stage = taskStage.value || taskStatus.value;
+  if (friendlyMessages[stage]) return friendlyMessages[stage];
+  if (taskProgress.value > 0 && taskProgress.value < 100) {
+    return `处理中... ${taskProgress.value}%`;
+  }
+  return '处理中...';
+});
+
+const currentStage = computed(() => {
+  if (taskStage.value === 'ASR') return 'upload';
+  if (taskStage.value === 'LLM' || taskStage.value === 'TTS') return 'process';
+  return 'default';
+});
 
 const lastTranscript = ref("");
 const lastAssistantText = ref("");
@@ -725,25 +691,32 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* ========= 核心：卡片高度 = 视口 - header - main padding ========= */
+/* 统一使用全局CSS变量 - 浅色童趣主题 */
 .card {
+  border-radius: var(--radius-lg);
+  border: 3px solid var(--border-light);
+  background: var(--bg-card);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-md);
+
+  /* 响应式高度：视口高度 - header - main padding */
   height: calc(100vh - var(--vt-header-h, 0px) - var(--vt-main-pad-top, 0px) - var(--vt-main-pad-bottom, 0px));
-  overflow: hidden;
+  max-height: calc(100vh - var(--vt-header-h, 0px) - var(--vt-main-pad-top, 0px) - var(--vt-main-pad-bottom, 0px));
+  min-height: 500px;
+
+  /* flex 容器，让子元素可以使用 flex: 1 */
   display: flex;
   flex-direction: column;
-
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.06);
-  padding: 22px;
+  overflow: hidden;
 }
 
 .head {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-sm);
   align-items: flex-start;
   flex: none;
+  margin-bottom: var(--space-sm);
 }
 
 .titleWrap {
@@ -751,118 +724,141 @@ onBeforeUnmount(() => {
 }
 
 h1 {
-  margin: 0 0 6px;
-  font-size: 22px;
+  margin: 0 0 4px;
+  font-size: var(--font-xl);
+  font-weight: 900;
+  color: var(--text-primary);
+  text-shadow: 2px 2px 0 rgba(79, 195, 247, 0.3);
 }
 
 .muted {
   margin: 0;
-  opacity: 0.7;
+  color: var(--text-secondary);
+  line-height: 1.4;
+  font-size: var(--font-sm);
 }
 
 .muted2 {
-  opacity: 0.65;
-  font-size: 12px;
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
 }
 
 .badge {
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  background: rgba(255, 255, 255, 0.06);
-  font-size: 12px;
-  opacity: 0.85;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-full);
+  border: 2px solid var(--border-light);
+  background: var(--bg-highlight);
+  font-size: var(--font-sm);
   flex: none;
 }
 
 .panel {
-  margin-top: 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.14);
-  padding: 14px;
+  margin-top: var(--space-sm);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-light);
+  background: var(--bg-highlight);
+  padding: var(--space-sm);
   flex: none;
 }
 
 .row {
   display: flex;
-  gap: 10px;
+  gap: var(--space-sm);
   flex-wrap: wrap;
   align-items: center;
 }
 
 .btn {
   border: 0;
-  border-radius: 12px;
-  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
   cursor: pointer;
-  background: rgba(255, 255, 255, 0.14);
-  color: rgba(255, 255, 255, 0.9);
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font-weight: 700;
+  border: 2px solid var(--border-medium);
+  transition: all 200ms ease;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn.small {
   padding: 8px 12px;
-  border-radius: 10px;
-  font-size: 12px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-sm);
 }
 
 .btn.ghost {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.18);
 }
 
 .btn.primary {
-  background: rgba(255, 138, 61, 0.85);
-  color: rgba(20, 20, 20, 0.95);
+  background: linear-gradient(135deg, var(--primary-sun), var(--primary-candy));
+  color: var(--text-white);
+  border-color: var(--primary-sun);
+  box-shadow: var(--shadow-button);
   min-width: 220px;
 }
 
 .btn.next {
-  background: rgba(140, 255, 160, 0.18);
-  border: 1px solid rgba(140, 255, 160, 0.26);
+  background: var(--primary-sky);
+  color: var(--text-white);
+  border-color: var(--primary-sky);
 }
 
 .btn.primary.recording {
-  transform: scale(1.02);
+  transform: scale(1.05);
+  box-shadow: 0 0 20px rgba(255, 183, 77, 0.6);
 }
 
 .btn:disabled {
-  opacity: 0.45;
+  opacity: 0.3;
   cursor: not-allowed;
+  transform: none;
 }
 
 .hint {
-  margin-top: 10px;
+  margin-top: var(--space-xs);
   font-size: 12px;
-  opacity: 0.7;
+  color: var(--text-secondary);
 }
 
 .status {
-  margin-top: 10px;
-  font-size: 13px;
-  opacity: 0.85;
+  margin-top: var(--space-xs);
+  font-size: var(--font-sm);
+  color: var(--text-primary);
+  padding: 6px var(--space-sm);
+  background: var(--bg-highlight);
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--primary-grass);
+  font-weight: 700;
 }
 
 .status.error {
-  color: #ffb4b4;
-  opacity: 1;
+  color: #C62828;
+  background: #FFEBEE;
+  border-color: #F44336;
 }
 
 /* progress */
 .progressWrap {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px dashed rgba(255, 255, 255, 0.16);
+  margin-top: var(--space-sm);
+  padding-top: var(--space-sm);
+  border-top: 2px dashed var(--border-light);
 }
 
 .progressMeta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-sm);
   align-items: center;
-  font-size: 12px;
-  opacity: 0.9;
-  margin-bottom: 8px;
+  font-size: var(--font-sm);
+  margin-bottom: var(--space-sm);
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .mono {
@@ -871,59 +867,61 @@ h1 {
 
 .bar {
   height: 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.10);
+  border-radius: var(--radius-full);
+  background: rgba(0,0,0,0.08);
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 2px solid var(--border-light);
 }
 
 .barInner {
   height: 100%;
-  border-radius: 999px;
-  background: rgba(255, 138, 61, 0.85);
+  border-radius: var(--radius-full);
+  background: linear-gradient(90deg, var(--primary-sun), var(--primary-candy));
   width: 0%;
   transition: width 200ms ease;
 }
 
 /* audio */
 .audioWrap {
-  margin-top: 12px;
-  padding-top: 10px;
-  border-top: 1px dashed rgba(255, 255, 255, 0.16);
+  margin-top: var(--space-sm);
+  padding-top: var(--space-xs);
+  border-top: 2px dashed var(--border-light);
 }
 
 .audioMeta {
   display: flex;
-  gap: 8px;
+  gap: var(--space-xs);
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: var(--space-xs);
   font-size: 12px;
-  opacity: 0.85;
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .dot {
   width: 8px;
   height: 8px;
-  border-radius: 99px;
-  background: rgba(140, 255, 160, 0.9);
+  border-radius: 50%;
+  background: var(--primary-grass);
   display: inline-block;
 }
 
 .audioEl {
   width: 100%;
+  border-radius: var(--radius-md);
 }
 
 /* grid 占据剩余高度 */
 .grid {
-  margin-top: 14px;
+  margin-top: var(--space-sm);
   display: grid;
   grid-template-columns: 1.15fr 0.85fr;
-  gap: 12px;
+  gap: var(--space-sm);
   align-items: stretch;
 
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: hidden; /* 不让 grid 本身滚动，让内部列滚动 */
 }
 
 /* 两列容器不滚，让内部滚 */
@@ -934,6 +932,10 @@ h1 {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-light);
+  background: var(--bg-highlight);
+  padding: var(--space-sm);
 }
 
 .sidePanel {
@@ -944,168 +946,186 @@ h1 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-xs);
   flex: none;
+  margin-bottom: var(--space-xs);
 }
 
 .panelTopRight {
   display: flex;
-  gap: 8px;
+  gap: var(--space-sm);
   align-items: center;
 }
 
 .panelTitle {
   margin: 0;
-  font-size: 14px;
-  opacity: 0.9;
+  font-size: var(--font-sm);
+  font-weight: 800;
+  color: var(--text-primary);
 }
 
 /* 聊天区域占满剩余空间，内部滚动 */
 .chatViewport {
-  margin-top: 12px;
+  margin-top: var(--space-xs);
   flex: 1;
   min-height: 0;
-  border-radius: 14px;
-  border: 1px dashed rgba(255, 255, 255, 0.16);
-  background: rgba(0, 0, 0, 0.12);
+  border-radius: var(--radius-md);
+  border: 2px dashed var(--border-light);
+  background: var(--bg-panel);
   overflow: hidden;
 }
 
 .chatScroll {
   height: 100%;
   overflow-y: auto;
-  padding: 12px;
+  padding: var(--space-sm);
   scroll-behavior: smooth;
 }
 
 .chat {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--space-xs);
 }
 
 .bubble {
   max-width: 92%;
-  border-radius: 16px;
-  padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  padding: 8px var(--space-sm);
+  border: 2px solid var(--border-light);
 }
 
 .bubble.me {
   margin-left: auto;
-  background: rgba(255, 255, 255, 0.09);
+  background: rgba(79, 195, 247, 0.15);
+  border-color: var(--primary-sky);
 }
 
 .bubble.bot {
   margin-right: auto;
-  background: rgba(0, 0, 0, 0.18);
+  background: var(--bg-panel);
 }
 
 .bubbleRole {
   font-size: 12px;
-  opacity: 0.7;
-  margin-bottom: 4px;
+  color: var(--text-secondary);
+  margin-bottom: 2px;
+  font-weight: 700;
 }
 
 .bubbleText {
   white-space: pre-wrap;
-  line-height: 1.5;
+  line-height: 1.4;
+  color: var(--text-primary);
+  font-size: var(--font-sm);
 }
 
 .emptyBig {
-  opacity: 0.7;
-  padding: 16px 10px;
-  border-radius: 14px;
-  border: 1px dashed rgba(255, 255, 255, 0.14);
-  background: rgba(0, 0, 0, 0.12);
+  color: var(--text-muted);
+  padding: var(--space-lg) var(--space-md);
+  border-radius: var(--radius-md);
+  border: 2px dashed var(--border-medium);
+  background: var(--bg-panel);
+  text-align: center;
 }
 
 .mt12 {
-  margin-top: 12px;
+  margin-top: var(--space-md);
 }
 
 /* story req */
 .reqBox {
-  border-radius: 14px;
-  border: 1px dashed rgba(255, 255, 255, 0.18);
-  background: rgba(0, 0, 0, 0.14);
-  padding: 12px;
+  border-radius: var(--radius-md);
+  border: 2px dashed var(--border-light);
+  background: var(--bg-panel);
+  padding: var(--space-md);
 }
 
 .reqTop {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
   flex-wrap: wrap;
 }
 
 .reqBadge {
-  font-size: 12px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: var(--font-sm);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: var(--bg-highlight);
+  border: 2px solid var(--border-medium);
+  font-weight: 700;
+  color: var(--text-secondary);
 }
 
 .reqBadge.done {
-  background: rgba(140, 255, 160, 0.16);
-  border-color: rgba(140, 255, 160, 0.26);
+  background: rgba(129, 199, 132, 0.3);
+  border-color: var(--primary-grass);
+  color: var(--text-primary);
 }
 
 .reqGrid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: var(--space-sm);
 }
 
 .reqItem {
   display: flex;
   justify-content: space-between;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.10);
-  font-size: 13px;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  border: 2px solid var(--border-light);
+  font-size: var(--font-sm);
 }
 
 .reqItem span {
-  opacity: 0.75;
-  min-width: 72px;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.reqItem b {
+  color: var(--text-primary);
+  font-weight: 800;
 }
 
 .reqItem.wide {
-  margin-top: 10px;
+  grid-column: 1 / -1;
+  margin-top: var(--space-sm);
 }
 
 .divider {
-  margin: 14px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin: var(--space-md) 0;
+  border-top: 2px solid var(--border-light);
 }
 
 .block {
-  margin-top: 10px;
+  margin-top: var(--space-sm);
 }
 
 .blockTitle {
-  font-size: 12px;
-  opacity: 0.75;
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
   margin-bottom: 6px;
+  font-weight: 700;
 }
 
 .box {
-  border-radius: 14px;
-  border: 1px dashed rgba(255, 255, 255, 0.18);
-  background: rgba(0, 0, 0, 0.18);
+  border-radius: var(--radius-md);
+  border: 2px dashed var(--border-light);
+  background: var(--bg-panel);
   min-height: 56px;
-  padding: 12px;
+  padding: var(--space-md);
 }
 
 .text {
   white-space: pre-wrap;
   line-height: 1.5;
+  color: var(--text-primary);
 }
 
 .break {
@@ -1113,64 +1133,116 @@ h1 {
 }
 
 .empty {
-  opacity: 0.6;
-  font-size: 13px;
+  color: var(--text-muted);
+  font-size: var(--font-sm);
 }
 
 /* debug */
 .debugBox {
-  margin-top: 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(0, 0, 0, 0.18);
-  padding: 10px;
+  margin-top: var(--space-md);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-light);
+  background: var(--bg-panel);
+  padding: var(--space-sm);
 }
 
 .debugTitle {
-  font-size: 12px;
-  opacity: 0.8;
+  font-size: var(--font-sm);
+  font-weight: 700;
+  color: var(--text-primary);
   margin-bottom: 6px;
 }
 
 .debugPre {
   margin: 0;
-  font-size: 12px;
+  font-size: var(--font-sm);
   white-space: pre-wrap;
   word-break: break-word;
-  opacity: 0.9;
+  color: var(--text-primary);
   max-height: 240px;
   overflow: auto;
-}
-
-/* ✅ 底部导航条：固定在卡片底部 */
-.navBar {
-  margin-top: 12px;
-  flex: none;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.10);
-}
-
-.navHint {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  gap: 6px;
-  align-items: baseline;
-  justify-content: center;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 @media (max-width: 980px) {
   .grid {
     grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
   }
-  .navHint {
-    display: none;
+
+  .mainPanel,
+  .sidePanel {
+    max-height: 50vh;
+  }
+}
+
+@media (max-width: 767px) {
+  .card {
+    padding: var(--space-md);
+    min-height: 400px;
+  }
+
+  h1 {
+    font-size: var(--font-lg);
+  }
+
+  .subtitle {
+    font-size: 12px;
+  }
+
+  .panelTitle {
+    font-size: 12px;
+  }
+
+  .btn {
+    padding: 8px 12px;
+    font-size: var(--font-sm);
+  }
+
+  .btn.primary {
+    min-width: 150px;
+  }
+
+  .reqGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .mainPanel,
+  .sidePanel {
+    max-height: 40vh;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: var(--space-sm);
+    border: 2px solid var(--border-light);
+  }
+
+  .head {
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+
+  h1 {
+    font-size: var(--font-md);
+  }
+
+  .btn {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  .btn.primary {
+    min-width: 120px;
+  }
+
+  .row {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .row .btn {
+    width: 100%;
   }
 }
 </style>

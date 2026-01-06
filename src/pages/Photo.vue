@@ -2,12 +2,11 @@
   <section class="card">
     <header class="head">
       <div>
-        <h1>拍照 / 生成漫画形象</h1>
-        <p class="muted">
-          支持拍照或上传图片。生成成功后会保存漫画 URL 到本地（localStorage），后续页面可直接复用。
+        <h1 class="title-fun">📷 拍照片，变漫画！</h1>
+        <p class="subtitle">
+          拍一张你的照片，我们帮你变成卡通形象～
         </p>
       </div>
-      <div class="badge">{{ stepText }}</div>
     </header>
 
     <!-- Mode Switch -->
@@ -49,11 +48,11 @@
             </button>
 
             <button class="btn" @click="capture" type="button" :disabled="busy || !cameraOn || countdown > 0">
-              立即拍照
+              📸 拍一张
             </button>
 
-            <button class="btn primary" @click="startCountdown(3)" type="button" :disabled="busy || !cameraOn || countdown > 0">
-              倒计时 3 秒拍照
+            <button class="btn btn-fun" @click="startCountdown(3)" type="button" :disabled="busy || !cameraOn || countdown > 0">
+              ⏰ 倒计时拍照
             </button>
 
             <button class="btn ghost" @click="stopCamera" type="button" :disabled="busy">
@@ -93,7 +92,17 @@
       <div class="panel">
         <h3 class="panelTitle">预览 / 结果</h3>
 
-        <div class="previewRow">
+        <!-- 加载状态 -->
+        <LoadingState
+          v-if="busy"
+          :stage="currentStage"
+          :message="friendlyMessage"
+          :progress="taskProgress"
+          :show-progress="taskProgress > 0"
+        />
+
+        <!-- 预览区域 -->
+        <div v-else class="previewRow">
           <div class="previewCol">
             <div class="subTitle">原图</div>
             <div class="imgBox">
@@ -112,33 +121,23 @@
         </div>
 
         <div class="row">
-          <button class="btn primary" @click="generateAvatar" type="button" :disabled="!photoBlob || busy || countdown > 0">
-            {{ busy ? (pollingText || "生成中...") : "生成漫画形象" }}
+          <button class="btn btn-primary btn-fun btn-large" @click="generateAvatar" type="button" :disabled="!photoBlob || busy || countdown > 0">
+            {{ busy ? "生成中..." : "开始变身！✨" }}
           </button>
 
           <button class="btn ghost" type="button" @click="copyAvatarUrl" :disabled="!avatarUrl">
-            复制结果链接
+            📋 复制结果
           </button>
         </div>
 
-        <div v-if="statusText" class="status" :class="{ error: statusType === 'error' }">
+        <div v-if="statusText && !busy" class="status" :class="{ error: statusType === 'error' }">
           {{ statusText }}
-        </div>
-
-        <div class="meta">
-          <div class="kv"><span>clientId</span><code>{{ clientId }}</code></div>
-          <div class="kv"><span>API</span><code>{{ apiHint }}</code></div>
-          <div class="kv"><span>session</span><code>{{ sessionId }}</code></div>
         </div>
       </div>
     </div>
 
-    <footer class="foot">
-      <button class="btn ghost" :disabled="true" type="button">上一步</button>
-      <button class="btn" @click="goNext" type="button" :disabled="!canGoNext">
-        下一步：语音对话
-      </button>
-    </footer>
+    <!-- 统一导航栏 -->
+    <NavigationBar :disable-next="!canGoNext" />
   </section>
 </template>
 
@@ -146,23 +145,17 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { steps } from "../router";
+import NavigationBar from "../components/NavigationBar.vue";
+import LoadingState from "../components/LoadingState.vue";
 
 /** ===================== Step info ===================== */
 const route = useRoute();
 const router = useRouter();
 
-const currentIndex = computed(() => {
-  const idx = steps.findIndex((s) => s.path === route.path);
-  return idx === -1 ? 0 : idx;
-});
-const stepText = computed(() => `${currentIndex.value + 1} / ${steps.length}`);
-
 /** ===================== Config ===================== */
 const API_BASE = import.meta.env.VITE_API_BASE || "";   // e.g. https://xxx.fcapp.run
-const API_TOKEN = import.meta.env.VITE_API_TOKEN || ""; // demo token（你后端若不校验可留空）
+const API_TOKEN = import.meta.env.VITE_API_TOKEN || ""; // demo token
 const LS_KEY = "visiontale_state_v1";
-
-const apiHint = computed(() => (API_BASE ? API_BASE : "(VITE_API_BASE 未配置，默认同域)"));
 
 /** ===================== Lightweight “identity” ===================== */
 function getClientId() {
@@ -327,10 +320,29 @@ const busy = ref(false);
 const statusText = ref("");
 const statusType = ref("info"); // 'info' | 'error'
 const avatarUrl = ref("");
+const taskProgress = ref(0); // 进度百分比
 
 const pollingText = ref("");  // 按钮里的动态文案
 let pollTimer = null;
 let pollAbort = null;
+
+// 友好文案映射
+const friendlyMessage = computed(() => {
+  if (pollingText.value.includes('上传')) return '正在上传照片... ⬆️';
+  if (pollingText.value.includes('提交')) return '正在准备... 📋';
+  if (taskProgress.value > 0 && taskProgress.value < 100) {
+    return `正在变身漫画形象... ${taskProgress.value}%`;
+  }
+  if (pollingText.value.includes('生成')) return '正在变身漫画形象... ✨';
+  return '处理中...';
+});
+
+// 当前阶段
+const currentStage = computed(() => {
+  if (pollingText.value.includes('上传')) return 'upload';
+  if (pollingText.value.includes('生成') || taskProgress.value > 0) return 'process';
+  return 'default';
+});
 
 async function generateAvatar() {
   if (!photoBlob.value) return;
@@ -339,6 +351,7 @@ async function generateAvatar() {
   pollingText.value = "上传中...";
   statusText.value = "";
   statusType.value = "info";
+  taskProgress.value = 0; // 重置进度
   stopPolling();
 
   try {
@@ -431,8 +444,11 @@ async function pollTaskUntilDone(taskId) {
     const st = task?.status;
     const prog = typeof task?.progress === "number" ? task.progress : null;
 
-    // 按钮文案更新
-    if (prog != null) pollingText.value = `生成中... ${prog}%`;
+    // 更新进度
+    if (prog != null) {
+      taskProgress.value = prog;
+      pollingText.value = `生成中... ${prog}%`;
+    }
 
     if (st === "DONE") {
       const url = task?.result?.avatarUrl;
@@ -481,11 +497,6 @@ function copyAvatarUrl() {
 
 /** ===================== Navigation ===================== */
 const canGoNext = computed(() => !!avatarUrl.value && !busy.value && countdown.value === 0);
-
-function goNext() {
-  if (!canGoNext.value) return;
-  router.push("/dialog");
-}
 
 /** ===================== Persistence ===================== */
 function persistState() {
@@ -569,36 +580,48 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .card {
-  border-radius: 18px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.06);
-  padding: 22px;
+  border-radius: var(--radius-lg);
+  border: 3px solid var(--border-light);
+  background: var(--bg-card);
+  padding: var(--space-lg);
   min-height: 60vh;
+  max-height: calc(100vh - 120px);
+  box-shadow: var(--shadow-md);
+
+  /* 固定上下布局 */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .head {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--space-md);
   align-items: flex-start;
+  margin-bottom: var(--space-md);
 }
 
-h1 { margin: 0 0 6px; font-size: 22px; }
-.muted { margin: 0; opacity: .7; }
+/* 儿童友好标题 */
+.title-fun {
+  font-size: var(--font-2xl);
+  color: var(--text-primary);
+  font-weight: 900;
+  margin: 0 0 var(--space-sm);
+  text-shadow: 2px 2px 0 rgba(79, 195, 247, 0.3);
+}
 
-.badge {
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(255,255,255,0.14);
-  background: rgba(255,255,255,0.06);
-  font-size: 12px;
-  opacity: .85;
+.subtitle {
+  font-size: var(--font-base);
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
 }
 
 .mode {
-  margin-top: 14px;
+  margin-top: var(--space-md);
   display: flex;
-  gap: 10px;
+  gap: var(--space-sm);
   align-items: center;
   flex-wrap: wrap;
 }
@@ -606,46 +629,64 @@ h1 { margin: 0 0 6px; font-size: 22px; }
 .spacer { flex: 1; }
 
 .pill {
-  border: 1px solid rgba(255,255,255,0.16);
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.78);
-  border-radius: 999px;
-  padding: 8px 12px;
+  border: 2px solid var(--border-medium);
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+  border-radius: var(--radius-full);
+  padding: var(--space-sm) var(--space-md);
   cursor: pointer;
+  font-weight: 700;
+  transition: all 200ms ease;
 }
+
 .pill.active {
-  border-color: rgba(255,138,61,0.55);
-  color: rgba(255,255,255,0.92);
+  border-color: var(--primary-sky);
+  background: var(--primary-sky);
+  color: var(--text-white);
+  transform: scale(1.05);
 }
-.pill.ghost { background: transparent; }
-.pill:disabled { opacity: .45; cursor: not-allowed; }
+
+.pill.ghost {
+  background: transparent;
+}
+
+.pill:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 
 .grid {
-  margin-top: 14px;
+  margin-top: var(--space-md);
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: var(--space-md);
+
+  /* 可滚动区域 */
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
 }
 
 .panel {
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(0,0,0,0.14);
-  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-light);
+  background: var(--bg-highlight);
+  padding: var(--space-md);
 }
 
 .panelTitle {
-  margin: 0 0 12px;
-  font-size: 14px;
-  opacity: .9;
+  margin: 0 0 var(--space-md);
+  font-size: var(--font-lg);
+  font-weight: 800;
+  color: var(--text-primary);
 }
 
 .cameraBox {
   position: relative;
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   overflow: hidden;
-  border: 1px dashed rgba(255,255,255,0.18);
-  background: rgba(0,0,0,0.2);
+  border: 3px dashed var(--border-medium);
+  background: var(--bg-panel);
   min-height: 280px;
 }
 
@@ -662,66 +703,80 @@ h1 { margin: 0 0 6px; font-size: 22px; }
   inset: 0;
   display: grid;
   place-items: center;
-  padding: 14px;
+  padding: var(--space-md);
   text-align: center;
-  background: rgba(0,0,0,0.55);
+  background: rgba(0, 0, 0, 0.55);
+  color: var(--text-white);
 }
 
-.overlay.error { color: #ffb4b4; }
+.overlay.error {
+  background: rgba(244, 67, 54, 0.9);
+}
+
 .overlay.countdown {
-  background: rgba(0,0,0,0.32);
+  background: rgba(0, 0, 0, 0.32);
   font-size: 64px;
   font-weight: 800;
-  color: rgba(255,255,255,0.96);
-  text-shadow: 0 8px 24px rgba(0,0,0,0.55);
+  color: var(--text-white);
+  text-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
 }
 
 .hiddenCanvas { display: none; }
 
 .uploadBox {
   display: block;
-  border-radius: 14px;
-  border: 1px dashed rgba(255,255,255,0.18);
-  background: rgba(0,0,0,0.18);
-  padding: 18px;
+  border-radius: var(--radius-md);
+  border: 3px dashed var(--border-medium);
+  background: var(--bg-panel);
+  padding: var(--space-lg);
   min-height: 280px;
   cursor: pointer;
+  transition: all 200ms ease;
 }
+
+.uploadBox:hover {
+  border-color: var(--primary-sky);
+  background: var(--bg-highlight);
+}
+
 .file { display: none; }
 
 .uploadText {
   display: grid;
   place-items: center;
   height: 100%;
-  gap: 6px;
+  gap: var(--space-sm);
   text-align: center;
-  opacity: .9;
+  color: var(--text-secondary);
 }
-.uploadText .big { font-weight: 600; }
-.uploadText .small { font-size: 12px; opacity: .7; }
 
-.hint {
-  margin-top: 10px;
-  font-size: 12px;
-  opacity: .7;
+.uploadText .big {
+  font-weight: 800;
+  font-size: var(--font-lg);
+  color: var(--text-primary);
+}
+
+.uploadText .small {
+  font-size: var(--font-sm);
 }
 
 .previewRow {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: var(--space-sm);
 }
 
 .subTitle {
-  font-size: 12px;
-  opacity: .75;
-  margin-bottom: 6px;
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  font-weight: 700;
+  margin-bottom: var(--space-xs);
 }
 
 .imgBox {
-  border-radius: 14px;
-  border: 1px dashed rgba(255,255,255,0.18);
-  background: rgba(0,0,0,0.18);
+  border-radius: var(--radius-md);
+  border: 3px dashed var(--border-medium);
+  background: var(--bg-panel);
   min-height: 280px;
   display: grid;
   place-items: center;
@@ -735,73 +790,112 @@ h1 { margin: 0 0 6px; font-size: 22px; }
   display: block;
 }
 
-.empty { opacity: .6; font-size: 13px; }
+.empty {
+  color: var(--text-muted);
+  font-size: var(--font-sm);
+}
 
 .row {
-  margin-top: 12px;
+  margin-top: var(--space-md);
   display: flex;
-  gap: 10px;
+  gap: var(--space-sm);
   flex-wrap: wrap;
 }
 
 .btn {
   border: 0;
-  border-radius: 12px;
-  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
   cursor: pointer;
-  background: rgba(255,255,255,0.14);
-  color: rgba(255,255,255,0.9);
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font-weight: 700;
+  border: 2px solid var(--border-medium);
+  transition: all 200ms ease;
 }
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
 .btn.ghost {
   background: transparent;
-  border: 1px solid rgba(255,255,255,0.18);
 }
-.btn.primary {
-  background: rgba(255,138,61,0.85);
-  color: rgba(20,20,20,0.95);
+
+.btn-fun {
+  background: linear-gradient(135deg, var(--primary-sun), var(--primary-candy));
+  color: var(--text-white);
+  border-color: var(--primary-sun);
+  box-shadow: var(--shadow-button);
 }
-.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.btn-fun:hover:not(:disabled) {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.15);
+}
+
+.btn-fun:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.15);
+}
+
+.btn-primary {
+  background: var(--primary-sky);
+  color: var(--text-white);
+  border-color: var(--primary-sky);
+}
+
+.btn-large {
+  padding: var(--space-md) var(--space-lg);
+  font-size: var(--font-lg);
+  flex: 1;
+  min-width: 200px;
+}
+
+.btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
+}
 
 .status {
-  margin-top: 10px;
-  font-size: 13px;
-  opacity: .85;
-}
-.status.error { color: #ffb4b4; opacity: 1; }
-
-.meta {
-  margin-top: 10px;
-  display: grid;
-  gap: 8px;
-  opacity: .85;
-}
-.kv {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  font-size: 12px;
-}
-.kv span { width: 56px; opacity: .7; }
-.kv code {
-  padding: 4px 8px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.06);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 100%;
+  margin-top: var(--space-sm);
+  font-size: var(--font-base);
+  color: var(--text-primary);
+  font-weight: 700;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-highlight);
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--primary-grass);
 }
 
-.foot {
-  margin-top: 14px;
-  display: flex;
-  justify-content: space-between;
-  gap: 10px;
+.status.error {
+  background: #FFEBEE;
+  border-color: #F44336;
+  color: #C62828;
 }
 
 @media (max-width: 900px) {
   .grid { grid-template-columns: 1fr; }
   .previewRow { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 767px) {
+  .title-fun {
+    font-size: var(--font-xl);
+  }
+
+  .panelTitle {
+    font-size: var(--font-base);
+  }
+
+  .row {
+    flex-direction: column;
+  }
+
+  .btn-large {
+    width: 100%;
+  }
 }
 </style>

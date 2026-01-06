@@ -1,176 +1,130 @@
 <template>
-  <section class="vtPage">
-    <div class="vtCard">
-      <!-- 顶部说明栏 -->
-      <header class="vtHeader">
-        <div class="vtHeaderLeft">
-          <div class="vtTitle">生成故事</div>
-          <div class="vtSub">根据刚才的对话结果（storyReq）生成一个儿童故事（标题/正文只读）。</div>
+  <section class="card">
+    <header class="head">
+      <div class="titleWrap">
+        <h1 class="title-fun">📖 故事生成啦！</h1>
+        <p class="subtitle">根据刚才的对话，为你创作一个精彩的儿童故事～</p>
+      </div>
+    </header>
+
+    <!-- 操作区 -->
+    <div class="panel">
+      <div class="row">
+        <button class="btn btn-primary btn-fun" :disabled="busy || !canGenerate" @click="startGenerate">
+          {{ busy ? "生成中..." : "✨ 一键生成故事" }}
+        </button>
+      </div>
+
+      <!-- 加载状态 -->
+      <LoadingState
+        v-if="busy && taskId"
+        :stage="currentStage"
+        :message="friendlyMessage"
+        :progress="taskProgress"
+        :show-progress="taskProgress > 0"
+        small
+      />
+
+      <div v-if="statusText && !busy" class="status" :class="{ error: statusType === 'error' }">
+        {{ statusText }}
+      </div>
+    </div>
+
+    <!-- 主体内容 -->
+    <div class="grid">
+      <!-- 左：storyReq -->
+      <div class="panel">
+        <h3 class="panelTitle">📝 故事需求</h3>
+
+        <div v-if="!sessionId" class="emptyBig">
+          请从「语音对话」页面进入
         </div>
 
-        <div class="vtHeaderRight">
-          <div class="vtPill">
-            <span class="k">API</span>
-            <span class="v mono">{{ API_BASE || "(same-origin /api)" }}</span>
+        <div v-else-if="loadingSession" class="emptyBig">正在加载...</div>
+
+        <div v-else-if="storyReq" class="reqBox">
+          <div class="reqTop">
+            <span class="reqBadge" :class="{ done: !!storyReq.done }">
+              {{ storyReq.done ? "已收集完成 ✅" : "收集中…" }}
+            </span>
           </div>
-          <div class="vtPill">
-            <span class="k">SID</span>
-            <span class="v mono">{{ sessionId ? short(sessionId) : "-" }}</span>
+
+          <div class="reqGrid">
+            <div class="reqItem"><span>类型</span><b>{{ storyReq.genre || "-" }}</b></div>
+            <div class="reqItem"><span>主角</span><b>{{ storyReq.hero || "-" }}</b></div>
+            <div class="reqItem"><span>地点</span><b>{{ storyReq.setting || "-" }}</b></div>
+            <div class="reqItem"><span>氛围</span><b>{{ storyReq.tone || "-" }}</b></div>
+            <div class="reqItem"><span>结局</span><b>{{ storyReq.ending || "-" }}</b></div>
+            <div class="reqItem"><span>同伴</span><b>{{ storyReq.companion || "-" }}</b></div>
+            <div class="reqItem"><span>障碍</span><b>{{ storyReq.obstacle || "-" }}</b></div>
+            <div class="reqItem"><span>长度</span><b>{{ storyReq.length || "-" }}</b></div>
+          </div>
+
+          <div v-if="storyReq.taboo" class="reqItem wide">
+            <span>禁忌/不要</span><b>{{ storyReq.taboo }}</b>
+          </div>
+
+          <div v-if="!storyReq.done" class="tip">
+            回到「语音对话」继续补充需求～
           </div>
         </div>
-      </header>
 
-      <!-- 操作区 -->
-      <div class="vtToolbar">
-        <button class="btn primary" :disabled="busy || !canGenerate" @click="startGenerate">
-          {{ busy ? "生成中..." : "一键生成故事" }}
-        </button>
-
-        <button class="btn ghost" :disabled="busy || !sessionId" @click="loadSession(true)">
-          刷新 session
-        </button>
-
-        <button class="btn ghost" :disabled="busy" @click="showDebug = !showDebug">
-          {{ showDebug ? "隐藏调试" : "显示调试" }}
-        </button>
-
-        <div class="spacer"></div>
-
-        <div class="hint" v-if="statusText" :class="{ error: statusType === 'error' }">
-          {{ statusText }}
+        <div v-else class="emptyBig">
+          未找到故事需求，请先完成「语音对话」
         </div>
       </div>
 
-      <!-- 任务进度 -->
-      <div class="vtProgress" v-if="taskId">
-        <div class="meta">
-          <span class="mono">task: {{ taskId }}</span>
-          <span class="dot">•</span>
-          <span class="mono">status: {{ taskStatus || "-" }}</span>
-          <span class="dot">•</span>
-          <span class="mono">stage: {{ taskStage || "-" }}</span>
-          <span class="dot">•</span>
-          <span class="mono">progress: {{ taskProgress != null ? taskProgress + "%" : "-" }}</span>
+      <!-- 右：故事展示 -->
+      <div class="panel">
+        <h3 class="panelTitle">📖 故事内容</h3>
+
+        <!-- 标题 -->
+        <div class="field">
+          <div class="label">标题</div>
+          <input class="input readonly" :value="storyTitle || '（未生成）'" readonly />
         </div>
-        <div class="bar">
-          <div class="fill" :style="{ width: (taskProgress || 0) + '%' }"></div>
-        </div>
-      </div>
 
-      <!-- Debug -->
-      <div class="vtDebug" v-if="showDebug">
-        <div class="debugTitle">调试：/api/session 返回</div>
-        <pre class="debugPre">{{ rawSessionText || "(尚未拉取)" }}</pre>
-      </div>
+        <!-- 正文 -->
+        <div class="field">
+          <div class="label">正文 <span v-if="storyText" class="muted2">（{{ storyText.length }} 字）</span></div>
 
-      <!-- 主体内容 -->
-      <div class="vtGrid">
-        <!-- 左：storyReq -->
-        <div class="panel">
-          <div class="panelTop">
-            <div class="panelTitle">故事需求（artifacts["storyReq"]）</div>
-            <div class="panelMeta" v-if="artifactKeys.length">
-              keys: <span class="mono">{{ artifactKeys.join(", ") }}</span>
+          <div class="storyBox" v-if="storyText">
+            <div class="storyParagraph" v-for="(p, idx) in storyParagraphs" :key="idx">
+              {{ p }}
             </div>
           </div>
 
-          <div v-if="!sessionId" class="emptyBig">
-            缺少 sessionId：请从 Dialog 页正常进入（它会写入 localStorage: "visiontale_session_id"）
-          </div>
-
-          <div v-else-if="loadingSession" class="emptyBig">正在加载 session...</div>
-
-          <div v-else-if="storyReq" class="reqBox">
-            <div class="reqTop">
-              <span class="badge" :class="{ ok: !!storyReq.done }">
-                {{ storyReq.done ? "已收集完成 ✅" : "收集中…" }}
-              </span>
-              <span class="muted" v-if="storyReq.updatedAt">
-                updatedAt: {{ new Date(storyReq.updatedAt).toLocaleString() }}
-              </span>
-            </div>
-
-            <pre class="json">{{ JSON.stringify(storyReq, null, 2) }}</pre>
-
-            <div v-if="!storyReq.done" class="tip">
-              需求还没 done：回到“语音对话”补充一下，让小助手把 storyReq 补齐。
-            </div>
-          </div>
-
-          <div v-else class="emptyBig">
-            未找到 storyReq：请确认 Dialog 页是否把需求写入 artifacts["storyReq"]，并且当前页面用的是同一个 sessionId。
+          <div class="emptyStory" v-else>
+            还没有故事内容：点击「一键生成故事」
           </div>
         </div>
 
-        <!-- 右：故事展示（只读） -->
-        <div class="panel">
-          <div class="panelTop">
-            <div class="panelTitle">故事内容（只读）</div>
-            <div class="panelMeta" v-if="storyText">
-              字数：<span class="mono">{{ storyText.length }}</span>
-            </div>
-          </div>
+        <!-- 寓意 -->
+        <div class="field">
+          <div class="label">寓意（可编辑）</div>
+          <input class="input" v-model="moralDraft" placeholder="例如：勇敢尝试就会成长" />
+        </div>
 
-          <!-- 标题（只读） -->
-          <div class="field">
-            <div class="label">标题</div>
-            <input class="input readonly" :value="storyTitle || '（未生成）'" readonly />
-          </div>
-
-          <!-- 正文（只读，非 textarea，避免看起来像可编辑） -->
-          <div class="field">
-            <div class="label">正文</div>
-
-            <div class="storyBox" v-if="storyText">
-              <div class="storyParagraph" v-for="(p, idx) in storyParagraphs" :key="idx">
-                {{ p }}
-              </div>
-            </div>
-
-            <div class="emptyStory" v-else>
-              还没有故事内容：点击「一键生成故事」。
-            </div>
-
-            <div class="tinyTip" v-if="storyText && storyWasJson">
-              （已自动从 JSON 结构中解析为可读文本）
-            </div>
-          </div>
-
-          <!-- 寓意（可编辑，可保存） -->
-          <div class="field">
-            <div class="label">寓意（可选，可编辑）</div>
-            <input class="input" v-model="moralDraft" placeholder="例如：勇敢尝试就会成长" />
-          </div>
-
-          <div class="row">
-            <button class="btn" :disabled="busy || !sessionId || !canSaveMoral" @click="saveMoral">
-              保存寓意
-            </button>
-            <span class="muted" v-if="saveHint">{{ saveHint }}</span>
-          </div>
-
-          <div class="navBar">
-            <button class="btn ghost" :disabled="!prevStep" @click="goPrev">← 上一步</button>
-            <div class="navHint">
-              <span class="muted">下一步：</span>
-              <b>{{ nextStep?.title || "-" }}</b>
-            </div>
-            <button class="btn next" :disabled="!nextStep || !storyText" @click="goNext">
-              下一步 →
-            </button>
-          </div>
+        <div class="row">
+          <button class="btn" :disabled="busy || !sessionId || !canSaveMoral" @click="saveMoral">
+            保存寓意
+          </button>
+          <span class="muted2" v-if="saveHint">{{ saveHint }}</span>
         </div>
       </div>
     </div>
 
-    <div class="vtBg"></div>
+    <!-- 统一导航栏 -->
+    <NavigationBar :disable-next="!storyText" />
   </section>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { steps } from "../router";
+import NavigationBar from "../components/NavigationBar.vue";
+import LoadingState from "../components/LoadingState.vue";
 
 /** ===== 与 Dialog.vue 对齐的配置 ===== */
 const API_BASE = import.meta.env.VITE_API_BASE || "";
@@ -202,23 +156,6 @@ function getSessionId() {
   return sid;
 }
 
-/** ===== Step 导航 ===== */
-const currentIndex = computed(() => {
-  const idx = steps.findIndex((s) => s.path === route.path);
-  return idx === -1 ? 0 : idx;
-});
-const prevStep = computed(() => (currentIndex.value > 0 ? steps[currentIndex.value - 1] : null));
-const nextStep = computed(() => (currentIndex.value < steps.length - 1 ? steps[currentIndex.value + 1] : null));
-
-function goPrev() {
-  if (!prevStep.value) return;
-  router.push(prevStep.value.path);
-}
-function goNext() {
-  if (!nextStep.value) return;
-  router.push({ path: nextStep.value.path, query: { sessionId: sessionId.value } });
-}
-
 /** ===== State ===== */
 const sessionId = ref(getSessionId());
 const session = ref(null);
@@ -238,6 +175,20 @@ const taskStatus = ref("");
 const taskStage = ref("");
 const taskProgress = ref(null);
 
+// 友好文案映射
+const friendlyMessage = computed(() => {
+  if (taskProgress.value > 0 && taskProgress.value < 100) {
+    return `正在创作故事... ${taskProgress.value}%`;
+  }
+  if (taskStage.value === 'generate_story') return '正在创作精彩的故事... ✨📖';
+  return '正在处理中...';
+});
+
+const currentStage = computed(() => {
+  if (taskStage.value === 'generate_story') return 'process';
+  return 'default';
+});
+
 /** ===== Story 展示专用（只读）===== */
 const storyTitle = ref("");
 const storyText = ref("");
@@ -247,20 +198,6 @@ const moralDraft = ref("");
 const artifactKeys = computed(() => Object.keys(session.value?.artifacts || {}));
 const canGenerate = computed(() => !!sessionId.value && !!storyReq.value && !!storyReq.value.done);
 const canSaveMoral = computed(() => moralDraft.value.trim().length > 0 && !!sessionId.value);
-
-/** ===== Scroll lock：避免整页滚动，和 Dialog 一致体验 ===== */
-let prevBodyOverflow = "";
-let prevHtmlOverflow = "";
-function lockScroll() {
-  prevBodyOverflow = document.body.style.overflow;
-  prevHtmlOverflow = document.documentElement.style.overflow;
-  document.body.style.overflow = "hidden";
-  document.documentElement.style.overflow = "hidden";
-}
-function unlockScroll() {
-  document.body.style.overflow = prevBodyOverflow || "";
-  document.documentElement.style.overflow = prevHtmlOverflow || "";
-}
 
 /** ===== Utils ===== */
 function short(s) {
@@ -474,7 +411,6 @@ async function saveMoral() {
 
 /** ===== Mount ===== */
 onMounted(async () => {
-  lockScroll();
   if (!sessionId.value) {
     statusText.value = "缺少 sessionId：请从 Dialog 页进入（它会写入 localStorage）。";
     statusType.value = "error";
@@ -482,322 +418,309 @@ onMounted(async () => {
   }
   await loadSession(false);
 });
-
-onBeforeUnmount(() => {
-  unlockScroll();
-});
 </script>
 
 <style scoped>
-/* ===== 避免和全局顶部进度条重叠：给页面预留顶部空间 ===== */
-.vtPage {
-  min-height: 100vh;
-  box-sizing: border-box;
-  padding: 88px 14px 14px; /* ⬅️ 顶部 88px 预留给全局进度条/导航 */
-  position: relative;
-}
+.card {
+  border-radius: var(--radius-lg);
+  border: 3px solid var(--border-light);
+  background: var(--bg-card);
+  padding: var(--space-lg);
+  min-height: 60vh;
+  max-height: calc(100vh - 120px);
+  box-shadow: var(--shadow-md);
 
-.vtBg {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background:
-    radial-gradient(1200px 700px at 20% 0%, rgba(255, 140, 70, 0.14), transparent 60%),
-    radial-gradient(1000px 600px at 80% 15%, rgba(99, 102, 241, 0.10), transparent 60%),
-    linear-gradient(to bottom, rgba(0,0,0,0.65), rgba(0,0,0,0.75));
-}
-
-/* ===== 外层卡片：深色风格对齐 Dialog ===== */
-.vtCard {
-  max-width: 1220px;
-  margin: 0 auto;
-  border-radius: 18px;
+  /* 固定上下布局 */
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(17, 19, 23, 0.88);
-  box-shadow: 0 18px 55px rgba(0,0,0,0.45);
 }
 
-/* Header */
-.vtHeader {
-  padding: 16px 18px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+.head {
   display: flex;
-  gap: 12px;
-  align-items: flex-start;
   justify-content: space-between;
+  gap: var(--space-md);
+  align-items: flex-start;
+  margin-bottom: var(--space-md);
 }
-.vtTitle {
-  font-size: 18px;
-  font-weight: 800;
-  color: rgba(255,255,255,0.92);
+
+.titleWrap {
+  min-width: 0;
 }
-.vtSub {
-  margin-top: 6px;
-  font-size: 13px;
-  color: rgba(255,255,255,0.55);
+
+.title-fun {
+  font-size: var(--font-2xl);
+  color: var(--text-primary);
+  font-weight: 900;
+  margin: 0 0 var(--space-sm);
+  text-shadow: 2px 2px 0 rgba(79, 195, 247, 0.3);
 }
-.vtHeaderRight {
+
+.subtitle {
+  font-size: var(--font-base);
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.6;
+}
+
+.panel {
+  margin-top: var(--space-md);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-light);
+  background: var(--bg-highlight);
+  padding: var(--space-md);
+}
+
+.row {
   display: flex;
-  gap: 8px;
+  gap: var(--space-sm);
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
 }
-.vtPill {
-  font-size: 12px;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(255,255,255,0.06);
-  padding: 6px 10px;
-  border-radius: 999px;
-  display: flex;
-  gap: 8px;
-  max-width: 520px;
-}
-.vtPill .k { color: rgba(255,255,255,0.55); }
-.vtPill .v { color: rgba(255,255,255,0.82); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.mono {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-}
-
-/* Toolbar */
-.vtToolbar {
-  padding: 12px 18px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-.spacer { flex: 1; }
-
-.hint {
-  font-size: 13px;
-  color: rgba(255,255,255,0.70);
-}
-.hint.error { color: rgba(255, 120, 120, 0.95); }
 
 .btn {
-  border: 1px solid rgba(255,255,255,0.12);
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.86);
-  border-radius: 12px;
-  padding: 9px 12px;
-  font-size: 14px;
+  border: 0;
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
   cursor: pointer;
-}
-.btn:disabled { opacity: 0.55; cursor: not-allowed; }
-
-.btn.primary {
-  background: rgba(255, 140, 70, 0.20);
-  border-color: rgba(255, 140, 70, 0.35);
-}
-.btn.ghost {
-  background: rgba(255,255,255,0.05);
-}
-.btn.next {
-  background: rgba(99, 102, 241, 0.18);
-  border-color: rgba(99, 102, 241, 0.30);
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font-weight: 700;
+  border: 2px solid var(--border-medium);
+  transition: all 200ms ease;
 }
 
-/* Progress */
-.vtProgress {
-  padding: 10px 18px 14px 18px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-}
-.vtProgress .meta {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-wrap: wrap;
-  font-size: 12px;
-  color: rgba(255,255,255,0.55);
-}
-.dot { opacity: 0.6; }
-.bar {
-  margin-top: 8px;
-  height: 10px;
-  background: rgba(255,255,255,0.10);
-  border-radius: 999px;
-  overflow: hidden;
-}
-.fill {
-  height: 100%;
-  width: 0%;
-  background: rgba(255, 140, 70, 0.65);
-  transition: width 0.2s ease;
+.btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
 }
 
-/* Debug */
-.vtDebug {
-  padding: 12px 18px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  background: rgba(255,255,255,0.03);
-}
-.debugTitle {
-  font-weight: 800;
-  font-size: 12px;
-  margin-bottom: 8px;
-  color: rgba(255,255,255,0.60);
-}
-.debugPre {
-  margin: 0;
-  padding: 10px;
-  border-radius: 12px;
-  background: rgba(0,0,0,0.35);
-  border: 1px solid rgba(255,255,255,0.08);
-  font-size: 12px;
-  color: rgba(255,255,255,0.78);
-  max-height: 220px;
-  overflow: auto;
+.btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  transform: none;
 }
 
-/* Grid */
-.vtGrid {
-  padding: 14px;
+.btn-fun {
+  background: linear-gradient(135deg, var(--primary-sun), var(--primary-candy));
+  color: var(--text-white);
+  border-color: var(--primary-sun);
+  box-shadow: var(--shadow-button);
+}
+
+.btn-primary {
+  background: var(--primary-sky);
+  color: var(--text-white);
+  border-color: var(--primary-sky);
+}
+
+.status {
+  margin-top: var(--space-sm);
+  font-size: var(--font-base);
+  color: var(--text-primary);
+  font-weight: 700;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--bg-highlight);
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--primary-grass);
+}
+
+.status.error {
+  background: #FFEBEE;
+  border-color: #F44336;
+  color: #C62828;
+}
+
+.grid {
+  margin-top: var(--space-md);
   display: grid;
-  grid-template-columns: 1.05fr 1fr;
-  gap: 14px;
-}
-@media (max-width: 960px) {
-  .vtGrid { grid-template-columns: 1fr; }
-}
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-md);
 
-/* Panels */
-.panel {
-  height: calc(100vh - 340px);
+  /* 可滚动区域 */
+  flex: 1;
+  min-height: 0;
   overflow: auto;
-  border-radius: 16px;
-  padding: 14px;
-  border: 1px solid rgba(255,255,255,0.08);
-  background: rgba(8, 10, 13, 0.55);
-  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.03);
 }
 
-.panelTop {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 10px;
-}
 .panelTitle {
+  margin: 0 0 var(--space-md);
+  font-size: var(--font-lg);
   font-weight: 800;
-  font-size: 14px;
-  color: rgba(255,255,255,0.88);
-}
-.panelMeta {
-  font-size: 12px;
-  color: rgba(255,255,255,0.50);
+  color: var(--text-primary);
 }
 
 .emptyBig {
-  padding: 18px 10px;
-  color: rgba(255,255,255,0.48);
+  padding: var(--space-lg) var(--space-md);
+  color: var(--text-muted);
+  text-align: center;
+  border: 2px dashed var(--border-medium);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
 }
 
-/* Req */
-.reqBox { display: flex; flex-direction: column; gap: 10px; }
-.reqTop { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.badge {
-  font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.08);
-  color: rgba(255,255,255,0.78);
+/* 故事需求展示 */
+.reqBox {
+  border-radius: var(--radius-md);
+  border: 2px dashed var(--border-medium);
+  background: var(--bg-panel);
+  padding: var(--space-md);
 }
-.badge.ok { background: rgba(16,185,129,0.18); color: rgba(255,255,255,0.88); }
 
-.muted { color: rgba(255,255,255,0.55); font-size: 12px; }
-
-.json {
-  margin: 0;
-  padding: 10px;
-  border-radius: 12px;
-  background: rgba(0,0,0,0.35);
-  border: 1px solid rgba(255,255,255,0.08);
-  font-size: 12px;
-  line-height: 1.4;
-  color: rgba(255,255,255,0.78);
-  overflow: auto;
+.reqTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+  flex-wrap: wrap;
 }
+
+.reqBadge {
+  font-size: var(--font-sm);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.8);
+  border: 2px solid var(--border-medium);
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.reqBadge.done {
+  background: rgba(140, 255, 160, 0.3);
+  border-color: var(--primary-grass);
+  color: var(--text-primary);
+}
+
+.reqGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+
+.reqItem {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.6);
+  border: 2px solid var(--border-light);
+  font-size: var(--font-sm);
+}
+
+.reqItem span {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.reqItem b {
+  color: var(--text-primary);
+  font-weight: 800;
+}
+
+.reqItem.wide {
+  grid-column: 1 / -1;
+  margin-top: var(--space-sm);
+}
+
 .tip {
-  font-size: 12px;
-  color: rgba(255,255,255,0.55);
+  margin-top: var(--space-md);
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  padding: var(--space-sm) var(--space-md);
+  background: rgba(255, 200, 100, 0.2);
+  border-radius: var(--radius-sm);
+  border: 2px solid rgba(255, 200, 100, 0.4);
 }
 
-/* Form */
-.field { margin-top: 12px; }
-.label { font-size: 12px; color: rgba(255,255,255,0.60); margin-bottom: 6px; }
+/* 表单字段 */
+.field {
+  margin-top: var(--space-md);
+}
+
+.label {
+  font-size: var(--font-sm);
+  color: var(--text-secondary);
+  font-weight: 700;
+  margin-bottom: var(--space-xs);
+  display: block;
+}
 
 .input {
   width: 100%;
   box-sizing: border-box;
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 12px;
-  padding: 10px 12px;
-  font-size: 14px;
+  border: 2px solid var(--border-medium);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--font-base);
   outline: none;
-  background: rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.88);
-}
-.input.readonly {
-  opacity: 0.9;
-  background: rgba(255,255,255,0.04);
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
-/* Story read-only box */
-.storyBox {
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(0,0,0,0.30);
-  border-radius: 14px;
-  padding: 12px;
-  min-height: 240px;
-  max-height: 520px;
-  overflow: auto;
-  color: rgba(255,255,255,0.88);
-  line-height: 1.7;
-  font-size: 14px;
+.input.readonly {
+  opacity: 0.8;
+  background: var(--bg-panel);
+  cursor: default;
 }
-.storyParagraph + .storyParagraph {
-  margin-top: 10px;
+
+/* 故事展示框 */
+.storyBox {
+  border: 3px solid var(--border-medium);
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  min-height: 200px;
+  max-height: 400px;
+  overflow: auto;
+  color: var(--text-primary);
+  line-height: 1.8;
+  font-size: var(--font-base);
+}
+
+.storyParagraph {
+  margin-bottom: var(--space-md);
+  text-indent: 2em;
+}
+
+.storyParagraph:last-child {
+  margin-bottom: 0;
 }
 
 .emptyStory {
-  border: 1px dashed rgba(255,255,255,0.18);
-  background: rgba(255,255,255,0.03);
-  border-radius: 14px;
-  padding: 14px 12px;
-  color: rgba(255,255,255,0.55);
+  border: 2px dashed var(--border-medium);
+  background: var(--bg-panel);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg) var(--space-md);
+  color: var(--text-muted);
+  text-align: center;
 }
 
-.tinyTip {
-  margin-top: 8px;
-  font-size: 12px;
-  color: rgba(255,255,255,0.45);
+.muted2 {
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
 }
 
-.row {
-  margin-top: 12px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reqGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
-/* Bottom nav */
-.navBar {
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255,255,255,0.10);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.navHint {
-  font-size: 13px;
-  color: rgba(255,255,255,0.62);
+@media (max-width: 767px) {
+  .title-fun {
+    font-size: var(--font-xl);
+  }
+
+  .panelTitle {
+    font-size: var(--font-base);
+  }
 }
 </style>

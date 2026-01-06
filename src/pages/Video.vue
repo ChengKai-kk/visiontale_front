@@ -3,21 +3,10 @@
     <div class="card">
       <div class="head">
         <div>
-          <h2>生成视频</h2>
+          <h2>🎬 生成精彩视频！</h2>
           <p class="muted">
-            生成 N 段视频（按场景图动态决定），点击一次即可顺序连续播放。后端生成较久，请留意进度条。
+            小精灵会逐场景生成视频片段，请耐心等待～
           </p>
-        </div>
-
-        <div class="meta">
-          <div class="kv">
-            <span class="k">session</span>
-            <span class="v mono">{{ sessionId }}</span>
-          </div>
-          <div class="kv" v-if="taskId">
-            <span class="k">task</span>
-            <span class="v mono">{{ taskId }}</span>
-          </div>
         </div>
       </div>
 
@@ -43,11 +32,7 @@
           </label>
 
           <button class="btn primary" @click="start" :disabled="busy || !sessionId">
-            {{ busy ? "生成中…" : "开始生成视频" }}
-          </button>
-
-          <button class="btn" @click="refreshSession" :disabled="busy || !sessionId">
-            刷新数据
+            {{ busy ? "生成中…" : "🎬 开始生成视频" }}
           </button>
 
           <button class="btn" @click="playAll" :disabled="!playableClips.length">
@@ -55,28 +40,24 @@
           </button>
         </div>
 
-        <div class="hint" v-if="hint">{{ hint }}</div>
+        <!-- 加载状态 -->
+        <LoadingState
+          v-if="busy && taskId"
+          :stage="currentStage"
+          :message="friendlyMessage"
+          :progress="taskProgress"
+          :show-progress="taskProgress > 0"
+          small
+        />
+
+        <div class="hint" v-if="hint && !busy">{{ hint }}</div>
         <div class="err" v-if="errorMsg">{{ errorMsg }}</div>
       </div>
 
-      <!-- Overall progress -->
-      <div class="progressWrap" v-if="taskId">
-        <div class="progressTop">
-          <div class="muted2">
-            总进度：<b>{{ taskProgress }}%</b>
-            <span v-if="taskStage"> · {{ taskStage }}</span>
-            <span v-if="clipCount != null"> · clips={{ clipCount }}</span>
-          </div>
-          <div class="muted2" v-if="taskStatus">状态：<b>{{ taskStatus }}</b></div>
-        </div>
-
-        <div class="barOuter" role="progressbar" :aria-valuenow="taskProgress" aria-valuemin="0" aria-valuemax="100">
-          <div class="barInner" :style="{ width: taskProgress + '%' }"></div>
-        </div>
-      </div>
-
-      <!-- Player -->
-      <div class="playerWrap" v-if="playableClips.length">
+      <!-- 可滚动内容区域 -->
+      <div class="contentScroll">
+        <!-- Player -->
+        <div class="playerWrap" v-if="playableClips.length">
         <div class="playerHead">
           <div>
             <b>播放器</b>
@@ -141,13 +122,13 @@
       </div>
 
       <div class="empty muted2" v-else>
-        暂无 clips 数据。点击“开始生成视频”后，后端会将每段结果写回 session.artifacts.videoClips.items。
+        暂无 clips 数据。点击"开始生成视频"后，后端会将每段结果写回 session.artifacts.videoClips.items。
       </div>
-    </div>
+      </div>
+      <!-- 可滚动内容区域结束 -->
 
-    <!-- ✅ 底部固定操作栏：上一步 -->
-    <div class="bottomBar">
-      <button class="btn" @click="goPrev">上一步</button>
+      <!-- 统一导航栏 -->
+      <NavigationBar :disable-next="true" />
     </div>
   </div>
 </template>
@@ -155,14 +136,25 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import NavigationBar from "../components/NavigationBar.vue";
+import LoadingState from "../components/LoadingState.vue";
 
-const API_BASE = "https://visiont-backend-sptpcpjygm.cn-beijing.fcapp.run";
+const API_BASE = import.meta.env.VITE_API_BASE || "";
+const LS_SESSION = "visiontale_session_id";
 
 const route = useRoute();
 const router = useRouter();
 
-// ✅ 约定：从路由 query 里读 sessionId，例如 /video?sessionId=xxx
-const sessionId = ref(String(route.query.sessionId || "").trim());
+// ✅ 从路由 query 或 localStorage 读取 sessionId
+function getSessionId() {
+  const fromQuery = typeof route.query.sessionId === "string" ? route.query.sessionId : "";
+  const fromLS = localStorage.getItem(LS_SESSION) || "";
+  const sid = (fromQuery || fromLS).trim();
+  if (fromQuery) localStorage.setItem(LS_SESSION, fromQuery);
+  return sid;
+}
+
+const sessionId = ref(getSessionId());
 
 const clipDuration = ref(5);
 const watermark = ref(true);
@@ -177,6 +169,21 @@ const taskStatus = ref("");
 const taskProgress = ref(0);
 const taskStage = ref("");
 const clipCount = ref(null);
+
+// 友好文案映射
+const friendlyMessage = computed(() => {
+  if (taskProgress.value > 0 && taskProgress.value < 100) {
+    return `正在制作视频... ${taskProgress.value}%`;
+  }
+  if (taskStage.value === 'generate_videos') return '小精灵正在制作精彩视频... 🎬✨';
+  if (clipCount.value != null) return `正在生成第 ${clipCount.value} 段视频... 🎥`;
+  return '正在处理中...';
+});
+
+const currentStage = computed(() => {
+  if (taskStage.value === 'generate_videos' || taskProgress.value > 0) return 'process';
+  return 'default';
+});
 
 // session state
 const clips = ref([]); // videoClips.items
@@ -402,42 +409,51 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
-/* ✅ 不要白色大背景：改成浅灰，和你前面页面统一 */
+/* 统一使用全局CSS变量 */
 .page {
-  padding: 16px;
-  padding-top: 76px;      /* ✅ 预留顶部全局进度条高度（你可按实际调 64~96） */
-  padding-bottom: 86px;   /* ✅ 预留底部固定按钮栏高度 */
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  background: #f6f7f9;
+  /* 不需要设置背景色,使用body的全局背景 */
+  min-height: 60vh;
 }
 
 .card {
   width: 100%;
   max-width: 1100px;
-  background: #fff;
-  border: 1px solid rgba(0,0,0,.08);
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 6px 24px rgba(0,0,0,.06);
+  background: var(--bg-card);
+  border: 3px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-md);
+
+  /* 固定上下布局 */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: calc(100vh - 120px);
 }
 
 .head {
   display: flex;
   justify-content: space-between;
-  gap: 16px;
+  gap: var(--space-md);
   align-items: flex-start;
+  margin-bottom: var(--space-md);
 }
 
 h2 {
   margin: 0 0 6px 0;
-  font-size: 20px;
+  font-size: var(--font-lg);
+  font-weight: 900;
+  color: var(--text-primary);
+  text-shadow: 2px 2px 0 rgba(79, 195, 247, 0.3);
 }
 
-.muted { color: rgba(0,0,0,.6); margin: 0; line-height: 1.4; }
-.muted2 { color: rgba(0,0,0,.55); }
-.small { font-size: 12px; }
+.muted {
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+.muted2 { color: var(--text-secondary); }
+.small { font-size: var(--font-sm); }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 
 .meta {
@@ -452,11 +468,11 @@ h2 {
 .v { font-size: 12px; max-width: 420px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .controls {
-  margin-top: 14px;
-  padding: 12px;
-  border-radius: 12px;
-  background: rgba(0,0,0,.03);
-  border: 1px solid rgba(0,0,0,.06);
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  background: var(--bg-highlight);
+  border: 2px solid var(--border-light);
 }
 
 .formRow {
@@ -468,35 +484,69 @@ h2 {
 
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field.inline { flex-direction: row; align-items: center; margin-top: 18px; }
-.label { font-size: 12px; color: rgba(0,0,0,.6); }
+.label { font-size: var(--font-sm); color: var(--text-secondary); font-weight: 700; }
 
 .input {
   width: 110px;
-  padding: 8px 10px;
-  border: 1px solid rgba(0,0,0,.15);
-  border-radius: 10px;
+  padding: var(--space-sm);
+  border: 2px solid var(--border-medium);
+  border-radius: var(--radius-md);
   outline: none;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 .btn {
-  border: 1px solid rgba(0,0,0,.14);
-  background: #fff;
-  border-radius: 10px;
-  padding: 9px 12px;
+  border: 0;
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
   cursor: pointer;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font-weight: 700;
+  border: 2px solid var(--border-medium);
+  transition: all 200ms ease;
+}
+
+.btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
 }
 
 .btn.primary {
-  border-color: rgba(0,0,0,.18);
-  background: rgba(0,0,0,.88);
-  color: #fff;
+  background: linear-gradient(135deg, var(--primary-sun), var(--primary-candy));
+  color: var(--text-white);
+  border-color: var(--primary-sun);
+  box-shadow: var(--shadow-button);
 }
 
-.btn:disabled { opacity: .55; cursor: not-allowed; }
-.btn.small { padding: 7px 10px; font-size: 12px; }
+.btn:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+.btn.small { padding: 8px 12px; font-size: var(--font-sm); }
 
-.hint { margin-top: 10px; color: rgba(0,0,0,.65); font-size: 13px; }
-.err { margin-top: 10px; color: #b42318; font-size: 13px; }
+.hint {
+  margin-top: 10px;
+  color: var(--text-secondary);
+  font-size: var(--font-sm);
+}
+.err {
+  margin-top: 10px;
+  color: #C62828;
+  font-size: var(--font-sm);
+  background: #FFEBEE;
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-sm);
+  border: 2px solid #F44336;
+  font-weight: 700;
+}
+
+/* 可滚动内容区域 */
+.contentScroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  margin-top: var(--space-md);
+}
 
 .progressWrap {
   margin-top: 14px;
@@ -528,10 +578,11 @@ h2 {
 }
 
 .playerWrap {
-  margin-top: 14px;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(0,0,0,.06);
+  margin-top: var(--space-md);
+  padding: var(--space-md);
+  border-radius: var(--radius-md);
+  border: 2px solid var(--border-light);
+  background: var(--bg-highlight);
 }
 
 .playerHead {
@@ -544,12 +595,12 @@ h2 {
 
 .player {
   width: 100%;
-  border-radius: 12px;
-  background: rgba(0,0,0,.06);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
 }
 
 .clips {
-  margin-top: 14px;
+  margin-top: var(--space-md);
 }
 
 .clipsHead {
@@ -576,10 +627,17 @@ h2 {
 }
 
 .clipCard {
-  border: 1px solid rgba(0,0,0,.08);
-  border-radius: 12px;
-  padding: 12px;
-  background: #fff;
+  border: 2px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: var(--space-md);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  transition: all 200ms ease;
+}
+
+.clipCard:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
 
 .clipTop {
@@ -590,16 +648,32 @@ h2 {
 }
 
 .tag {
-  font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 999px;
-  border: 1px solid rgba(0,0,0,.10);
+  font-size: var(--font-sm);
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  border: 2px solid var(--border-medium);
+  font-weight: 700;
 }
 
-.tag.ok { background: rgba(22, 163, 74, .10); border-color: rgba(22, 163, 74, .22); }
-.tag.run { background: rgba(234, 179, 8, .12); border-color: rgba(234, 179, 8, .22); }
-.tag.bad { background: rgba(220, 38, 38, .10); border-color: rgba(220, 38, 38, .22); }
-.tag.muted { background: rgba(0,0,0,.04); }
+.tag.ok {
+  background: rgba(129, 199, 132, 0.3);
+  border-color: var(--primary-grass);
+  color: var(--text-primary);
+}
+.tag.run {
+  background: rgba(255, 183, 77, 0.3);
+  border-color: var(--primary-sun);
+  color: var(--text-primary);
+}
+.tag.bad {
+  background: #FFEBEE;
+  border-color: #F44336;
+  color: #C62828;
+}
+.tag.muted {
+  background: var(--bg-panel);
+  color: var(--text-secondary);
+}
 
 .clipBody {
   margin-top: 10px;
@@ -625,25 +699,12 @@ h2 {
 .clipActions { margin-top: 10px; display: flex; justify-content: flex-end; }
 
 .empty {
-  margin-top: 14px;
-  padding: 14px;
-  border-radius: 12px;
-  border: 1px dashed rgba(0,0,0,.15);
-  background: rgba(0,0,0,.02);
-}
-
-/* ✅ 底部固定栏：上一步 */
-.bottomBar {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 12px 16px;
-  background: rgba(246, 247, 249, 0.92);
-  backdrop-filter: blur(8px);
-  border-top: 1px solid rgba(0,0,0,.08);
-  display: flex;
-  justify-content: flex-start;
-  z-index: 50;
+  margin-top: var(--space-md);
+  padding: var(--space-lg) var(--space-md);
+  border-radius: var(--radius-md);
+  border: 2px dashed var(--border-medium);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  text-align: center;
 }
 </style>

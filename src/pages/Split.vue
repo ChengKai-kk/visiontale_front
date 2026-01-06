@@ -449,8 +449,62 @@ async function saveScenes() {
   }
 }
 
+/** ===== 响应式高度计算（与 Dialog 对齐） ===== */
+let _prevBodyOverflow = "";
+let _prevHtmlOverflow = "";
+let _prevBodyOverscroll = "";
+let _prevHtmlOverscroll = "";
+
+function lockPageScroll() {
+  const body = document.body;
+  const html = document.documentElement;
+
+  _prevBodyOverflow = body.style.overflow;
+  _prevHtmlOverflow = html.style.overflow;
+  _prevBodyOverscroll = body.style.overscrollBehavior;
+  _prevHtmlOverscroll = html.style.overscrollBehavior;
+
+  body.style.overflow = "hidden";
+  html.style.overflow = "hidden";
+  body.style.overscrollBehavior = "none";
+  html.style.overscrollBehavior = "none";
+}
+
+function unlockPageScroll() {
+  const body = document.body;
+  const html = document.documentElement;
+
+  body.style.overflow = _prevBodyOverflow || "";
+  html.style.overflow = _prevHtmlOverflow || "";
+  body.style.overscrollBehavior = _prevBodyOverscroll || "";
+  html.style.overscrollBehavior = _prevHtmlOverscroll || "";
+}
+
+function applySafeHeights() {
+  const html = document.documentElement;
+  const header = document.querySelector(".app-header");
+  const main = document.querySelector(".app-main");
+
+  const headerH = header ? Math.ceil(header.getBoundingClientRect().height) : 0;
+  let padTop = 0;
+  let padBottom = 0;
+  if (main) {
+    const cs = getComputedStyle(main);
+    padTop = parseFloat(cs.paddingTop || "0") || 0;
+    padBottom = parseFloat(cs.paddingBottom || "0") || 0;
+  }
+
+  html.style.setProperty("--vt-header-h", `${headerH}px`);
+  html.style.setProperty("--vt-main-pad-top", `${padTop}px`);
+  html.style.setProperty("--vt-main-pad-bottom", `${padBottom}px`);
+}
+
 /** ===== mount ===== */
 onMounted(async () => {
+  applySafeHeights();
+  lockPageScroll();
+  window.addEventListener("resize", applySafeHeights);
+
   if (!sessionId.value) {
     statusText.value = "缺少 sessionId：请从前一页进入。";
     statusType.value = "error";
@@ -458,7 +512,10 @@ onMounted(async () => {
   }
   await loadSession(false);
 });
-onBeforeUnmount(() => {});
+onBeforeUnmount(() => {
+  window.removeEventListener("resize", applySafeHeights);
+  unlockPageScroll();
+});
 </script>
 
 <style scoped>
@@ -468,9 +525,12 @@ onBeforeUnmount(() => {});
   border: 3px solid var(--border-light);
   background: var(--bg-card);
   padding: var(--space-lg);
-  min-height: 60vh;
-  max-height: calc(100vh - 120px);
   box-shadow: var(--shadow-md);
+
+  /* 响应式高度：视口高度 - header - main padding */
+  height: calc(100vh - var(--vt-header-h, 0px) - var(--vt-main-pad-top, 0px) - var(--vt-main-pad-bottom, 0px));
+  max-height: calc(100vh - var(--vt-header-h, 0px) - var(--vt-main-pad-top, 0px) - var(--vt-main-pad-bottom, 0px));
+  min-height: 500px;
 
   /* 固定上下布局 */
   display: flex;
@@ -601,6 +661,19 @@ onBeforeUnmount(() => {});
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--space-md);
+
+  /* 占据剩余高度 */
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.grid > .panel {
+  /* 每个面板独立滚动 */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .panelTitle {
@@ -633,8 +706,11 @@ onBeforeUnmount(() => {});
   color: var(--text-primary);
   line-height: 1.7;
   font-size: var(--font-base);
-  max-height: 400px;
-  overflow: auto;
+
+  /* 占据剩余空间并滚动 */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 .storyTitle {
   font-weight: 900;
@@ -653,9 +729,12 @@ onBeforeUnmount(() => {});
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
-  max-height: 500px;
-  overflow-y: auto;
   padding-right: var(--space-sm);
+
+  /* 占据剩余空间并滚动 */
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .sceneCard {
@@ -748,16 +827,105 @@ onBeforeUnmount(() => {});
 @media (max-width: 900px) {
   .grid {
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .grid > .panel {
+    max-height: 45vh;
+  }
+
+  .storyBox {
+    max-height: 35vh;
+  }
+
+  .sceneList {
+    max-height: 35vh;
   }
 }
 
 @media (max-width: 767px) {
+  .card {
+    padding: var(--space-md);
+    min-height: 400px;
+  }
+
   .title-fun {
     font-size: var(--font-xl);
   }
 
+  .subtitle {
+    font-size: var(--font-sm);
+  }
+
   .panelTitle {
     font-size: var(--font-base);
+  }
+
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .control {
+    width: 100%;
+  }
+
+  .grid > .panel {
+    max-height: 40vh;
+  }
+}
+
+@media (max-width: 480px) {
+  .card {
+    padding: var(--space-sm);
+    border: 2px solid var(--border-light);
+    min-height: 350px;
+  }
+
+  .head {
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .title-fun {
+    font-size: var(--font-lg);
+  }
+
+  .subtitle {
+    font-size: 12px;
+  }
+
+  .panel {
+    padding: var(--space-sm);
+  }
+
+  .sceneCard {
+    padding: var(--space-sm);
+  }
+
+  .sceneTop {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-sm);
+  }
+
+  .sceneOps {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .miniBtn {
+    flex: 1;
+    font-size: 11px;
+    padding: 4px 6px;
+  }
+
+  .grid > .panel {
+    max-height: 35vh;
   }
 }
 </style>

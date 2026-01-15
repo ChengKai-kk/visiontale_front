@@ -59,27 +59,26 @@
 
     <!-- 打印专用内容 -->
     <div class="print-only" id="storybook-print">
-      <!-- 封面：图片在上，文字在下 -->
-      <section class="printPage">
-        <div class="pageImage">
+      <!-- 封面：左页留白，右页封面 -->
+      <section class="printSpread coverSpread">
+        <div class="spreadPage leftPage blankPage"></div>
+        <div class="spreadPage rightPage coverPage">
           <img v-if="coverImage" :src="coverImage" alt="cover" />
           <div v-else class="imageFallback">暂无封面图片</div>
-        </div>
-        <div class="pageText">
-          <div class="pageTitle">{{ storyTitle || "我的故事书" }}</div>
-          <div class="pageMoral" v-if="storyMoral">{{ storyMoral }}</div>
+          <div class="coverTitle">{{ storyTitle || "我的故事书" }}</div>
+          <div class="coverLabel" v-if="storyMoral">{{ storyMoral }}</div>
         </div>
       </section>
 
-      <!-- 内页：图片在上，文字在下 -->
-      <section v-for="(p, idx) in pages" :key="`print_${p.order || idx}`" class="printPage">
-        <div class="pageImage">
-          <img v-if="p.imageUrl" :src="p.imageUrl" :alt="`scene ${p.order || idx + 1}`" />
-          <div v-else class="imageFallback">暂无插图</div>
-        </div>
-        <div class="pageText">
+      <!-- 内页：左页文字，右页插图 -->
+      <section v-for="(p, idx) in pages" :key="`print_${p.order || idx}`" class="printSpread">
+        <div class="spreadPage leftPage textPage">
           <div class="pageTitle">{{ p.sceneTitle || `场景 ${p.order || idx + 1}` }}</div>
           <div class="pageBody">{{ p.caption }}</div>
+        </div>
+        <div class="spreadPage rightPage imagePage">
+          <img v-if="p.imageUrl" :src="p.imageUrl" :alt="`scene ${p.order || idx + 1}`" />
+          <div v-else class="imageFallback">暂无插图</div>
         </div>
       </section>
     </div>
@@ -376,8 +375,7 @@ watch(
   gap: var(--space-lg);
 }
 
-.bookPage,
-.printPage {
+.bookPage {
   border-radius: var(--radius-lg);
   border: 2px solid var(--border-light);
   background: var(--bg-card);
@@ -625,12 +623,17 @@ watch(
 
 @media print {
   @page {
-    margin: 6mm;
-    size: A4 portrait;
+    margin: 0;
+    size: A4 landscape;
   }
 
+  :global(html),
   :global(body) {
     background: #fff;
+    width: 100%;
+    height: 100%;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   :global(.app-header) {
@@ -675,87 +678,123 @@ watch(
     display: none;
   }
 
-  /* 每一页：图片在上，文字在下 */
-  .printPage {
+  .printSpread {
     page-break-after: always;
-    box-shadow: none;
-    border: 0;
-    padding: 6mm;
-    height: calc(297mm - 12mm);
-    display: flex;
-    flex-direction: column;
+    width: 297mm;
+    height: 210mm;
+    padding: 7mm 8mm;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6mm;
+    background: #fff;
     break-inside: avoid;
   }
 
-  .printPage:last-child {
+  .printSpread:last-child {
     page-break-after: auto;
   }
 
-  /* 图片区域 */
-  .pageImage {
-    width: 100%;
-    flex: 1 1 60%;
-    max-height: 65%;
-    min-height: 40%;
+  .spreadPage {
+    position: relative;
     overflow: hidden;
-    border-radius: 8px;
-    background: #f5f5f5;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 10px;
+    background: #fff;
+    border-radius: 18px;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
   }
 
-  .pageImage img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-  }
-
-  /* 文字区域 */
-  .pageText {
-    padding: 15px 10px;
-    text-align: center;
-    flex: 1 1 40%;
+  .leftPage {
+    padding: 18mm 16mm;
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    min-height: 0;
+    gap: 10mm;
   }
 
-  /* 标题样式 */
-  .pageTitle {
-    font-size: 24pt;
+  .textPage {
+    justify-content: flex-start;
+  }
+
+  .rightPage {
+    background: #f3f4f6;
+  }
+
+  .coverPage,
+  .imagePage {
+    position: relative;
+  }
+
+  .coverPage img,
+  .imagePage img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+  }
+
+  .coverTitle {
+    position: absolute;
+    top: 12mm;
+    right: 12mm;
+    z-index: 3;
+    font-size: 30pt;
     font-weight: 900;
-    margin-bottom: 15px;
-    color: #333;
+    color: #ff7aa2;
+    text-align: right;
+    text-shadow:
+      2px 2px 0 rgba(255, 255, 255, 0.85),
+      -2px 2px 0 rgba(255, 255, 255, 0.85),
+      2px -2px 0 rgba(255, 255, 255, 0.85),
+      -2px -2px 0 rgba(255, 255, 255, 0.85),
+      0 6px 12px rgba(0, 0, 0, 0.2);
+    line-height: 1.15;
+    max-width: 70%;
+    word-break: break-word;
+  }
+
+  .coverLabel {
+    position: absolute;
+    bottom: 12mm;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+    padding: 6mm 12mm;
+    background: rgba(255, 255, 255, 0.88);
+    border-radius: 999px;
+    font-size: 14pt;
+    color: #3c3c3c;
+    text-align: center;
+    max-width: 85%;
+    line-height: 1.4;
+    word-break: break-word;
+  }
+
+  .pageTitle {
+    font-size: 20pt;
+    font-weight: 900;
+    color: #2c3e50;
     line-height: 1.3;
     word-break: break-word;
   }
 
-  /* 正文样式 */
   .pageBody {
-    font-size: 14pt;
+    font-size: 13pt;
     line-height: 1.7;
-    color: #444;
+    color: #3d4852;
     white-space: pre-wrap;
-    text-align: left;
-    padding: 0 20px;
-    word-break: break-word;
-  }
-
-  /* 寓意样式 */
-  .pageMoral {
-    font-size: 16pt;
-    color: #666;
-    line-height: 1.6;
-    font-style: italic;
     word-break: break-word;
   }
 
   .imageFallback {
-    padding: 20mm;
-    color: #999;
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    color: #7a7a7a;
+    z-index: 2;
+    padding: 12mm;
     text-align: center;
   }
 }

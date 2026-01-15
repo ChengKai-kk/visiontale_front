@@ -5,6 +5,7 @@ import Dialog from "../pages/Dialog.vue";
 import Story from "../pages/Story.vue";
 import Split from "../pages/Split.vue";
 import Images from "../pages/Images.vue";
+import Storybook from "../pages/Storybook.vue";
 import Video from "../pages/Video.vue";
 
 export const steps = [
@@ -13,6 +14,7 @@ export const steps = [
   { key: "story",  title: "生成故事",     path: "/story" },
   { key: "split",  title: "拆分文本",     path: "/split" },
   { key: "images", title: "生成图像",     path: "/images" },
+  { key: "storybook", title: "故事书预览", path: "/storybook" },
   { key: "video",  title: "生成视频",     path: "/video" },
 ];
 
@@ -25,6 +27,7 @@ const router = createRouter({
     { path: "/story", component: Story },
     { path: "/split", component: Split },
     { path: "/images", component: Images },
+    { path: "/storybook", component: Storybook },
     { path: "/video", component: Video },
   ],
 });

@@ -50,6 +50,13 @@
   --font-lg: 22px;
   --font-xl: 28px;
   --font-2xl: 36px;
+
+  /* 布局高度变量 - 用于精确计算内容区域 */
+  --header-height: 80px;
+  --header-padding-v: 12px;
+  --main-padding-top: 16px;
+  --main-padding-bottom: 16px;
+  --content-available-height: calc(100vh - var(--header-height) - var(--main-padding-top) - var(--main-padding-bottom));
 }
 
 /* ==================== 基础样式 ==================== */
@@ -114,7 +121,8 @@ a {
   display: flex;
   gap: var(--space-md);
   align-items: center;
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--header-padding-v) var(--space-lg);
+  min-height: var(--header-height);
 
   /* 彩虹渐变背景 */
   background: linear-gradient(
@@ -136,7 +144,7 @@ a {
 }
 
 .app-main {
-  padding: var(--space-lg) var(--space-md);
+  padding: var(--main-padding-top) var(--space-md) var(--main-padding-bottom);
   max-width: 1400px;
   width: 100%;
   margin: 0 auto;
@@ -287,19 +295,24 @@ a {
 
 /* ==================== 响应式布局 ==================== */
 
-/* 手机端 (< 768px) */
-@media (max-width: 767px) {
+/* 超小手机端 (< 480px) */
+@media (max-width: 479px) {
   :root {
-    --font-base: 16px;
-    --font-lg: 20px;
-    --font-xl: 24px;
-    --font-2xl: 32px;
-    --space-lg: 16px;
-    --space-xl: 24px;
+    --font-base: 15px;
+    --font-lg: 18px;
+    --font-xl: 22px;
+    --font-2xl: 28px;
+    --space-lg: 12px;
+    --space-xl: 20px;
+    --header-height: 70px;
+    --header-padding-v: 10px;
+    --main-padding-top: 12px;
+    --main-padding-bottom: 12px;
   }
 
   .app-header {
-    padding: var(--space-sm) var(--space-md);
+    padding: var(--header-padding-v) var(--space-md);
+    gap: var(--space-sm);
   }
 
   .brand {
@@ -307,7 +320,63 @@ a {
   }
 
   .app-main {
-    padding: var(--space-md);
+    padding: var(--main-padding-top) var(--space-sm) var(--main-padding-bottom);
+  }
+
+  .stepbar-steps {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: var(--space-xs);
+    scrollbar-width: none;
+  }
+
+  .stepbar-steps::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stepbar-step {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    font-size: 12px;
+    padding: var(--space-xs) var(--space-sm);
+  }
+
+  .dot {
+    width: 12px;
+    height: 12px;
+  }
+
+  .label {
+    font-size: 11px;
+  }
+}
+
+/* 手机端 (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
+  :root {
+    --font-base: 16px;
+    --font-lg: 19px;
+    --font-xl: 24px;
+    --font-2xl: 30px;
+    --space-lg: 16px;
+    --space-xl: 24px;
+    --header-height: 75px;
+    --header-padding-v: 10px;
+    --main-padding-top: 14px;
+    --main-padding-bottom: 14px;
+  }
+
+  .app-header {
+    padding: var(--header-padding-v) var(--space-md);
+  }
+
+  .brand {
+    font-size: var(--font-lg);
+  }
+
+  .app-main {
+    padding: var(--main-padding-top) var(--space-md) var(--main-padding-bottom);
   }
 
   .stepbar-steps {
@@ -338,26 +407,82 @@ a {
   }
 }
 
-/* 平板 (768px - 1279px) */
-@media (min-width: 768px) and (max-width: 1279px) {
+/* 平板竖屏 (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
   :root {
     --font-base: 17px;
-    --font-lg: 21px;
-    --font-xl: 26px;
+    --font-lg: 20px;
+    --font-xl: 25px;
+    --header-height: 80px;
+    --header-padding-v: 12px;
+    --main-padding-top: 16px;
+    --main-padding-bottom: 16px;
   }
 
   .app-main {
     max-width: 100%;
-    padding: var(--space-lg) var(--space-md);
+    padding: var(--main-padding-top) var(--space-md) var(--main-padding-bottom);
   }
 }
 
-/* 桌面 (>= 1280px) */
-@media (min-width: 1280px) {
+/* 平板横屏/小笔记本 (1024px - 1279px) - 关键优化点 */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  :root {
+    --font-base: 17px;
+    --font-lg: 20px;
+    --font-xl: 26px;
+    --header-height: 75px;
+    --header-padding-v: 10px;
+    --main-padding-top: 18px;
+    --main-padding-bottom: 18px;
+  }
+
+  .app-header {
+    padding: var(--header-padding-v) var(--space-lg);
+  }
+
+  .brand {
+    font-size: var(--font-xl);
+  }
+
+  .app-main {
+    max-width: 1200px;
+    padding: var(--main-padding-top) var(--space-lg) var(--main-padding-bottom);
+  }
+}
+
+/* 桌面端 (1280px - 1919px) */
+@media (min-width: 1280px) and (max-width: 1919px) {
+  :root {
+    --font-base: 18px;
+    --font-lg: 21px;
+    --font-xl: 27px;
+    --header-height: 80px;
+    --header-padding-v: 12px;
+  }
+
+  .app-main {
+    padding: var(--main-padding-top) var(--space-lg) var(--main-padding-bottom);
+  }
+}
+
+/* 大屏桌面 (>= 1920px) */
+@media (min-width: 1920px) {
   :root {
     --font-base: 18px;
     --font-lg: 22px;
     --font-xl: 28px;
+    --header-height: 85px;
+    --header-padding-v: 14px;
+  }
+
+  .app-header {
+    padding: var(--header-padding-v) var(--space-xl);
+  }
+
+  .app-main {
+    max-width: 1600px;
+    padding: var(--main-padding-top) var(--space-xl) var(--main-padding-bottom);
   }
 }
 

@@ -2,10 +2,8 @@
   <section class="card page">
     <header class="head">
       <div class="titleWrap">
-        <h1>🖼️ 生成精彩插图！</h1>
-        <p class="muted">
-          点击开始后，小精灵会逐场景绘制插图，请耐心等待～
-        </p>
+        <h1>🖼️ 生成插图</h1>
+        <p class="muted">逐场景绘制</p>
       </div>
     </header>
 
@@ -413,9 +411,9 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-lg);
   border: 3px solid var(--border-light);
   background: var(--bg-card);
-  padding: var(--space-lg);
-  min-height: 60vh;
-  max-height: calc(100vh - 120px);
+  padding: var(--space-md);
+  min-height: 50vh;
+  max-height: var(--content-available-height);
   box-shadow: var(--shadow-md);
 
   /* 固定上下布局 */
@@ -427,18 +425,31 @@ onBeforeUnmount(() => {
 .head {
   display: flex;
   justify-content: space-between;
-  gap: var(--space-md);
-  align-items: flex-start;
-  margin-bottom: var(--space-md);
+  gap: var(--space-sm);
+  align-items: center;
+  margin-bottom: var(--space-xs);
+}
+.titleWrap {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
 }
 .titleWrap h1 {
-  margin: 0 0 var(--space-sm);
-  font-size: var(--font-2xl);
+  margin: 0;
+  font-size: var(--font-base);
   font-weight: 900;
   color: var(--text-primary);
   text-shadow: 2px 2px 0 rgba(79, 195, 247, 0.3);
+  white-space: nowrap;
 }
-.muted { margin: 0; color: var(--text-secondary); }
+.muted {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-xs);
+  line-height: 1.2;
+  white-space: nowrap;
+}
 .muted2 { color: var(--text-secondary); }
 
 .badge {
@@ -733,9 +744,39 @@ onBeforeUnmount(() => {
   color: var(--text-primary);
 }
 
-@media (max-width: 767px) {
+/* 超小手机 (< 480px) */
+@media (max-width: 479px) {
+  .card {
+    padding: var(--space-sm);
+  }
+
   .titleWrap h1 {
-    font-size: var(--font-xl);
+    font-size: var(--font-base);
+  }
+}
+
+/* 手机 (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
+  .card {
+    padding: var(--space-sm);
+  }
+
+  .titleWrap h1 {
+    font-size: var(--font-base);
+  }
+}
+
+/* 平板横屏/小笔记本 (900px - 1279px) - 关键优化 */
+@media (min-width: 900px) and (max-width: 1279px) {
+  .card {
+    padding: var(--space-md);
+  }
+}
+
+/* 桌面端及以上 (>= 1280px) */
+@media (min-width: 1280px) {
+  .card {
+    padding: var(--space-lg);
   }
 }
 </style>

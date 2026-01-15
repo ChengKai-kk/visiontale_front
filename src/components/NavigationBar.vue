@@ -63,6 +63,7 @@ const stepEmojis = {
   story: '📖',
   split: '✂️',
   images: '🖼️',
+  storybook: '📚',
   video: '🎬'
 };
 
@@ -111,18 +112,18 @@ async function handleNext() {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-md);
-  padding: var(--space-lg) var(--space-md);
+  padding: var(--space-md) var(--space-md);
   background: var(--bg-card);
   border-top: 4px solid var(--border-accent);
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
-  margin-top: var(--space-xl);
+  margin-top: var(--space-md);
 }
 
 .nav-btn {
   display: flex;
   align-items: center;
   gap: var(--space-sm);
-  padding: var(--space-md) var(--space-lg);
+  padding: var(--space-sm) var(--space-md);
   border: 3px solid currentColor;
   border-radius: var(--radius-lg);
   background: var(--bg-card);
@@ -131,7 +132,7 @@ async function handleNext() {
   cursor: pointer;
   transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: var(--shadow-button);
-  min-width: 140px;
+  min-width: 120px;
   position: relative;
 }
 
@@ -187,7 +188,7 @@ async function handleNext() {
 }
 
 .nav-btn__text {
-  font-size: var(--font-base);
+  font-size: var(--font-sm);
 }
 
 .nav-center {
@@ -206,12 +207,12 @@ async function handleNext() {
 }
 
 .nav-step__emoji {
-  font-size: var(--font-xl);
+  font-size: var(--font-lg);
   line-height: 1;
 }
 
 .nav-step__text {
-  font-size: var(--font-lg);
+  font-size: var(--font-base);
   font-weight: 800;
   color: var(--text-primary);
 }
@@ -222,27 +223,47 @@ async function handleNext() {
   font-weight: 600;
 }
 
-/* 平板响应式 (768-1023px) */
-@media (max-width: 1023px) {
+/* 超小手机 (< 480px) */
+@media (max-width: 479px) {
+  .nav-bar {
+    padding: var(--space-sm) var(--space-xs);
+    gap: var(--space-xs);
+    margin-top: var(--space-sm);
+  }
+
   .nav-btn {
-    min-width: 100px;
-    padding: var(--space-sm) var(--space-md);
+    min-width: 50px;
+    padding: var(--space-xs) var(--space-sm);
+    justify-content: center;
   }
 
   .nav-btn__text {
-    font-size: var(--font-sm);
+    display: none;
+  }
+
+  .nav-btn__icon {
+    font-size: var(--font-xl);
+  }
+
+  .nav-step__emoji {
+    font-size: var(--font-base);
   }
 
   .nav-step__text {
-    font-size: var(--font-base);
+    font-size: var(--font-xs);
+  }
+
+  .nav-progress {
+    font-size: 10px;
   }
 }
 
-/* 手机响应式 (< 768px) */
-@media (max-width: 767px) {
+/* 手机 (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
   .nav-bar {
-    padding: var(--space-md) var(--space-sm);
+    padding: var(--space-sm) var(--space-sm);
     gap: var(--space-sm);
+    margin-top: var(--space-sm);
   }
 
   .nav-btn {
@@ -251,7 +272,6 @@ async function handleNext() {
     justify-content: center;
   }
 
-  /* 隐藏文字，只显示箭头 */
   .nav-btn__text {
     display: none;
   }
@@ -269,7 +289,60 @@ async function handleNext() {
   }
 
   .nav-progress {
-    font-size: 12px;
+    font-size: 11px;
+  }
+}
+
+/* 平板竖屏 (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .nav-bar {
+    padding: var(--space-sm) var(--space-md);
+    gap: var(--space-sm);
+  }
+
+  .nav-btn {
+    min-width: 100px;
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .nav-btn__text {
+    font-size: var(--font-sm);
+  }
+
+  .nav-step__text {
+    font-size: var(--font-base);
+  }
+}
+
+/* 平板横屏/小笔记本 (1024px - 1279px) - 关键优化 */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .nav-bar {
+    padding: var(--space-sm) var(--space-lg);
+    gap: var(--space-md);
+  }
+
+  .nav-btn {
+    min-width: 110px;
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .nav-btn__icon {
+    font-size: var(--font-lg);
+  }
+
+  .nav-step__emoji {
+    font-size: var(--font-lg);
+  }
+}
+
+/* 桌面端及以上 (>= 1280px) */
+@media (min-width: 1280px) {
+  .nav-bar {
+    padding: var(--space-md) var(--space-lg);
+  }
+
+  .nav-btn {
+    min-width: 130px;
   }
 }
 </style>

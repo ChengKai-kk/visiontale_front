@@ -2,10 +2,8 @@
   <section class="card">
     <header class="head">
       <div class="titleWrap">
-        <h1 class="title-fun">✂️ 拆分故事场景</h1>
-        <p class="subtitle">
-          将故事拆分为6～8个精彩场景，每个场景都可以生成图片～
-        </p>
+        <h1 class="title-fun">✂️ 拆分场景</h1>
+        <p class="subtitle">拆分为6～8个精彩场景</p>
       </div>
     </header>
 
@@ -524,12 +522,12 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-lg);
   border: 3px solid var(--border-light);
   background: var(--bg-card);
-  padding: var(--space-lg);
+  padding: var(--space-md);
   box-shadow: var(--shadow-md);
 
-  /* 响应式高度：视口高度 - header - main padding */
-  height: calc(100vh - var(--vt-header-h, 0px) - var(--vt-main-pad-top, 0px) - var(--vt-main-pad-bottom, 0px));
-  max-height: calc(100vh - var(--vt-header-h, 0px) - var(--vt-main-pad-top, 0px) - var(--vt-main-pad-bottom, 0px));
+  /* 响应式高度：使用全局变量 */
+  height: var(--content-available-height);
+  max-height: var(--content-available-height);
   min-height: 500px;
 
   /* 固定上下布局 */
@@ -541,28 +539,36 @@ onBeforeUnmount(() => {
 .head {
   display: flex;
   justify-content: space-between;
-  gap: var(--space-md);
-  align-items: flex-start;
-  margin-bottom: var(--space-md);
+  gap: var(--space-sm);
+  align-items: center;
+  margin-bottom: var(--space-xs);
 }
 
 .titleWrap {
   min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
 }
 
 .title-fun {
-  font-size: var(--font-2xl);
+  font-size: var(--font-base);
   color: var(--text-primary);
   font-weight: 900;
-  margin: 0 0 var(--space-sm);
+  margin: 0;
   text-shadow: 2px 2px 0 rgba(79, 195, 247, 0.3);
+  white-space: nowrap;
 }
 
 .subtitle {
-  font-size: var(--font-base);
+  font-size: var(--font-xs);
   color: var(--text-secondary);
   margin: 0;
-  line-height: 1.6;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .panel {
@@ -824,75 +830,15 @@ onBeforeUnmount(() => {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
-@media (max-width: 900px) {
-  .grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: auto auto;
-  }
-
-  .grid > .panel {
-    max-height: 45vh;
-  }
-
-  .storyBox {
-    max-height: 35vh;
-  }
-
-  .sceneList {
-    max-height: 35vh;
-  }
-}
-
-@media (max-width: 767px) {
-  .card {
-    padding: var(--space-md);
-    min-height: 400px;
-  }
-
-  .title-fun {
-    font-size: var(--font-xl);
-  }
-
-  .subtitle {
-    font-size: var(--font-sm);
-  }
-
-  .panelTitle {
-    font-size: var(--font-base);
-  }
-
-  .row {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .btn {
-    width: 100%;
-  }
-
-  .control {
-    width: 100%;
-  }
-
-  .grid > .panel {
-    max-height: 40vh;
-  }
-}
-
-@media (max-width: 480px) {
+/* 超小手机 (< 480px) */
+@media (max-width: 479px) {
   .card {
     padding: var(--space-sm);
-    border: 2px solid var(--border-light);
     min-height: 350px;
   }
 
-  .head {
-    flex-direction: column;
-    gap: var(--space-sm);
-  }
-
   .title-fun {
-    font-size: var(--font-lg);
+    font-size: var(--font-sm);
   }
 
   .subtitle {
@@ -901,6 +847,18 @@ onBeforeUnmount(() => {
 
   .panel {
     padding: var(--space-sm);
+  }
+
+  .panelTitle {
+    font-size: var(--font-sm);
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .grid > .panel {
+    max-height: 35vh;
   }
 
   .sceneCard {
@@ -924,8 +882,105 @@ onBeforeUnmount(() => {
     padding: 4px 6px;
   }
 
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .control {
+    width: 100%;
+  }
+}
+
+/* 手机 (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
+  .card {
+    padding: var(--space-sm);
+    min-height: 400px;
+  }
+
+  .title-fun {
+    font-size: var(--font-base);
+  }
+
+  .subtitle {
+    font-size: var(--font-sm);
+  }
+
+  .panelTitle {
+    font-size: var(--font-base);
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
   .grid > .panel {
+    max-height: 40vh;
+  }
+
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .control {
+    width: 100%;
+  }
+}
+
+/* 平板竖屏 (768px - 899px) */
+@media (min-width: 768px) and (max-width: 899px) {
+  .card {
+    padding: var(--space-md);
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .grid > .panel {
+    max-height: 45vh;
+  }
+
+  .storyBox {
     max-height: 35vh;
+  }
+
+  .sceneList {
+    max-height: 35vh;
+  }
+}
+
+/* 平板横屏/小笔记本 (900px - 1279px) - 关键优化 */
+@media (min-width: 900px) and (max-width: 1279px) {
+  .card {
+    padding: var(--space-md);
+  }
+
+  .title-fun {
+    font-size: var(--font-lg);
+  }
+
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-sm);
+  }
+}
+
+/* 桌面端及以上 (>= 1280px) */
+@media (min-width: 1280px) {
+  .card {
+    padding: var(--space-lg);
   }
 }
 </style>

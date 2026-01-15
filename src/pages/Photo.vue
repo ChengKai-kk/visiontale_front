@@ -1,11 +1,9 @@
 <template>
   <section class="card">
     <header class="head">
-      <div>
-        <h1 class="title-fun">📷 拍照片，变漫画！</h1>
-        <p class="subtitle">
-          拍一张你的照片，我们帮你变成卡通形象～
-        </p>
+      <div class="titleWrap">
+        <h1 class="title-fun">📷 拍照片，变漫画</h1>
+        <p class="subtitle">拍照或上传，变成卡通形象</p>
       </div>
     </header>
 
@@ -583,9 +581,9 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-lg);
   border: 3px solid var(--border-light);
   background: var(--bg-card);
-  padding: var(--space-lg);
-  min-height: 60vh;
-  max-height: calc(100vh - 120px);
+  padding: var(--space-md);
+  min-height: 50vh;
+  max-height: var(--content-available-height);
   box-shadow: var(--shadow-md);
 
   /* 固定上下布局 */
@@ -597,25 +595,37 @@ onBeforeUnmount(() => {
 .head {
   display: flex;
   justify-content: space-between;
-  gap: var(--space-md);
-  align-items: flex-start;
-  margin-bottom: var(--space-md);
+  gap: var(--space-sm);
+  align-items: center;
+  margin-bottom: var(--space-xs);
+}
+
+.titleWrap {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
 }
 
 /* 儿童友好标题 */
 .title-fun {
-  font-size: var(--font-2xl);
+  font-size: var(--font-base);
   color: var(--text-primary);
   font-weight: 900;
-  margin: 0 0 var(--space-sm);
+  margin: 0;
   text-shadow: 2px 2px 0 rgba(79, 195, 247, 0.3);
+  white-space: nowrap;
 }
 
 .subtitle {
-  font-size: var(--font-base);
+  font-size: var(--font-xs);
   color: var(--text-secondary);
   margin: 0;
-  line-height: 1.6;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .mode {
@@ -876,18 +886,27 @@ onBeforeUnmount(() => {
   color: #C62828;
 }
 
-@media (max-width: 900px) {
-  .grid { grid-template-columns: 1fr; }
-  .previewRow { grid-template-columns: 1fr; }
-}
+/* 超小手机 (< 480px) */
+@media (max-width: 479px) {
+  .card {
+    padding: var(--space-sm);
+    min-height: 400px;
+  }
 
-@media (max-width: 767px) {
   .title-fun {
-    font-size: var(--font-xl);
+    font-size: var(--font-base);
   }
 
   .panelTitle {
-    font-size: var(--font-base);
+    font-size: var(--font-sm);
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .previewRow {
+    grid-template-columns: 1fr;
   }
 
   .row {
@@ -896,6 +915,76 @@ onBeforeUnmount(() => {
 
   .btn-large {
     width: 100%;
+    font-size: var(--font-base);
+  }
+}
+
+/* 手机 (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
+  .card {
+    padding: var(--space-sm);
+  }
+
+  .title-fun {
+    font-size: var(--font-base);
+  }
+
+  .panelTitle {
+    font-size: var(--font-base);
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .previewRow {
+    grid-template-columns: 1fr;
+  }
+
+  .row {
+    flex-direction: column;
+  }
+
+  .btn-large {
+    width: 100%;
+  }
+}
+
+/* 平板竖屏 (768px - 899px) */
+@media (min-width: 768px) and (max-width: 899px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .previewRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 平板横屏/小笔记本 (900px - 1279px) - 关键优化 */
+@media (min-width: 900px) and (max-width: 1279px) {
+  .card {
+    padding: var(--space-md);
+  }
+
+  .title-fun {
+    font-size: var(--font-lg);
+  }
+
+  .panelTitle {
+    font-size: var(--font-base);
+  }
+
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-sm);
+  }
+}
+
+/* 桌面端及以上 (>= 1280px) */
+@media (min-width: 1280px) {
+  .card {
+    padding: var(--space-lg);
   }
 }
 </style>

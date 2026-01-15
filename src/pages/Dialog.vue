@@ -2,8 +2,8 @@
   <section class="card">
     <header class="head">
       <div class="titleWrap">
-        <h1 class="title-fun">🎤 和小助手聊天</h1>
-        <p class="subtitle">按住按钮说话，告诉我你想要什么样的故事～</p>
+        <h1>🎤 和小助手聊天</h1>
+        <p class="subtitle">按住说话</p>
       </div>
     </header>
 
@@ -696,12 +696,12 @@ onBeforeUnmount(() => {
   border-radius: var(--radius-lg);
   border: 3px solid var(--border-light);
   background: var(--bg-card);
-  padding: var(--space-lg);
+  padding: var(--space-md);
   box-shadow: var(--shadow-md);
 
-  /* 响应式高度：视口高度 - header - main padding */
-  height: calc(100vh - var(--vt-header-h, 0px) - var(--vt-main-pad-top, 0px) - var(--vt-main-pad-bottom, 0px));
-  max-height: calc(100vh - var(--vt-header-h, 0px) - var(--vt-main-pad-top, 0px) - var(--vt-main-pad-bottom, 0px));
+  /* 响应式高度：使用全局变量 */
+  height: var(--content-available-height);
+  max-height: var(--content-available-height);
   min-height: 500px;
 
   /* flex 容器，让子元素可以使用 flex: 1 */
@@ -714,28 +714,36 @@ onBeforeUnmount(() => {
   display: flex;
   justify-content: space-between;
   gap: var(--space-sm);
-  align-items: flex-start;
+  align-items: center;
   flex: none;
-  margin-bottom: var(--space-sm);
+  margin-bottom: var(--space-xs);
 }
 
 .titleWrap {
   min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
 }
 
 h1 {
-  margin: 0 0 4px;
-  font-size: var(--font-xl);
+  margin: 0;
+  font-size: var(--font-base);
   font-weight: 900;
   color: var(--text-primary);
   text-shadow: 2px 2px 0 rgba(79, 195, 247, 0.3);
+  white-space: nowrap;
 }
 
-.muted {
+.subtitle {
   margin: 0;
   color: var(--text-secondary);
-  line-height: 1.4;
-  font-size: var(--font-sm);
+  line-height: 1.2;
+  font-size: var(--font-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .muted2 {
@@ -1163,26 +1171,77 @@ h1 {
   overflow: auto;
 }
 
-@media (max-width: 980px) {
-  .grid {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr 1fr;
-  }
-
-  .mainPanel,
-  .sidePanel {
-    max-height: 50vh;
-  }
-}
-
-@media (max-width: 767px) {
+/* 超小手机 (< 480px) */
+@media (max-width: 479px) {
   .card {
-    padding: var(--space-md);
+    padding: var(--space-sm);
     min-height: 400px;
   }
 
   h1 {
-    font-size: var(--font-lg);
+    font-size: var(--font-sm);
+  }
+
+  .subtitle {
+    font-size: 11px;
+  }
+
+  .panelTitle {
+    font-size: 12px;
+  }
+
+  .btn {
+    padding: 6px 10px;
+    font-size: 12px;
+  }
+
+  .btn.primary {
+    min-width: 120px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+  }
+
+  .mainPanel,
+  .sidePanel {
+    max-height: 35vh;
+  }
+
+  .reqGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .row {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .row .btn {
+    width: 100%;
+  }
+
+  .titleWrap {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .subtitle {
+    white-space: normal;
+  }
+}
+
+/* 手机 (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
+  .card {
+    padding: var(--space-sm);
+    min-height: 400px;
+  }
+
+  h1 {
+    font-size: var(--font-base);
   }
 
   .subtitle {
@@ -1202,47 +1261,62 @@ h1 {
     min-width: 150px;
   }
 
-  .reqGrid {
+  .grid {
     grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
   }
 
   .mainPanel,
   .sidePanel {
     max-height: 40vh;
   }
+
+  .reqGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
-@media (max-width: 480px) {
+/* 平板竖屏 (768px - 979px) */
+@media (min-width: 768px) and (max-width: 979px) {
   .card {
-    padding: var(--space-sm);
-    border: 2px solid var(--border-light);
+    padding: var(--space-md);
   }
 
-  .head {
-    flex-direction: column;
-    gap: var(--space-xs);
+  .grid {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+
+  .mainPanel,
+  .sidePanel {
+    max-height: 45vh;
+  }
+}
+
+/* 平板横屏/小笔记本 (980px - 1279px) - 关键优化 */
+@media (min-width: 980px) and (max-width: 1279px) {
+  .card {
+    padding: var(--space-md);
   }
 
   h1 {
-    font-size: var(--font-md);
+    font-size: var(--font-lg);
   }
 
-  .btn {
-    font-size: 12px;
-    padding: 6px 10px;
+  .grid {
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: var(--space-sm);
+  }
+}
+
+/* 桌面端及以上 (>= 1280px) */
+@media (min-width: 1280px) {
+  .card {
+    padding: var(--space-lg);
   }
 
-  .btn.primary {
-    min-width: 120px;
-  }
-
-  .row {
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .row .btn {
-    width: 100%;
+  .grid {
+    grid-template-columns: 1.15fr 0.85fr;
   }
 }
 </style>

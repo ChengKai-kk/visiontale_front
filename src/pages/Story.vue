@@ -2,8 +2,8 @@
   <section class="card">
     <header class="head">
       <div class="titleWrap">
-        <h1 class="title-fun">📖 故事生成啦！</h1>
-        <p class="subtitle">根据刚才的对话，为你创作一个精彩的儿童故事～</p>
+        <h1 class="title-fun">📖 故事生成</h1>
+        <p class="subtitle">一键创作精彩儿童故事</p>
       </div>
     </header>
 
@@ -425,9 +425,9 @@ onMounted(async () => {
   border-radius: var(--radius-lg);
   border: 3px solid var(--border-light);
   background: var(--bg-card);
-  padding: var(--space-lg);
-  min-height: 60vh;
-  max-height: calc(100vh - 120px);
+  padding: var(--space-md);
+  min-height: 50vh;
+  max-height: var(--content-available-height);
   box-shadow: var(--shadow-md);
 
   /* 固定上下布局 */
@@ -439,28 +439,36 @@ onMounted(async () => {
 .head {
   display: flex;
   justify-content: space-between;
-  gap: var(--space-md);
-  align-items: flex-start;
-  margin-bottom: var(--space-md);
+  gap: var(--space-sm);
+  align-items: center;
+  margin-bottom: var(--space-xs);
 }
 
 .titleWrap {
   min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
 }
 
 .title-fun {
-  font-size: var(--font-2xl);
+  font-size: var(--font-base);
   color: var(--text-primary);
   font-weight: 900;
-  margin: 0 0 var(--space-sm);
+  margin: 0;
   text-shadow: 2px 2px 0 rgba(79, 195, 247, 0.3);
+  white-space: nowrap;
 }
 
 .subtitle {
-  font-size: var(--font-base);
+  font-size: var(--font-xs);
   color: var(--text-secondary);
   margin: 0;
-  line-height: 1.6;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .panel {
@@ -704,7 +712,21 @@ onMounted(async () => {
   font-size: var(--font-sm);
 }
 
-@media (max-width: 900px) {
+/* 超小手机 (< 480px) */
+@media (max-width: 479px) {
+  .card {
+    padding: var(--space-sm);
+    min-height: 400px;
+  }
+
+  .title-fun {
+    font-size: var(--font-base);
+  }
+
+  .panelTitle {
+    font-size: var(--font-sm);
+  }
+
   .grid {
     grid-template-columns: 1fr;
   }
@@ -714,13 +736,60 @@ onMounted(async () => {
   }
 }
 
-@media (max-width: 767px) {
+/* 手机 (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
+  .card {
+    padding: var(--space-sm);
+  }
+
   .title-fun {
-    font-size: var(--font-xl);
+    font-size: var(--font-base);
   }
 
   .panelTitle {
     font-size: var(--font-base);
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reqGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 平板竖屏/小平板横屏 (768px - 899px) */
+@media (min-width: 768px) and (max-width: 899px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reqGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* 平板横屏/小笔记本 (900px - 1279px) - 关键优化 */
+@media (min-width: 900px) and (max-width: 1279px) {
+  .card {
+    padding: var(--space-md);
+  }
+
+  .title-fun {
+    font-size: var(--font-lg);
+  }
+
+  .grid {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-sm);
+  }
+}
+
+/* 桌面端及以上 (>= 1280px) */
+@media (min-width: 1280px) {
+  .card {
+    padding: var(--space-lg);
   }
 }
 </style>

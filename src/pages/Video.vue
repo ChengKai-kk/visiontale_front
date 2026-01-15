@@ -2,11 +2,9 @@
   <div class="page">
     <div class="card">
       <div class="head">
-        <div>
-          <h2>🎬 生成精彩视频！</h2>
-          <p class="muted">
-            小精灵会逐场景生成视频片段，请耐心等待～
-          </p>
+        <div class="titleWrap">
+          <h2>🎬 生成视频</h2>
+          <p class="muted">逐场景生成视频片段</p>
         </div>
       </div>
 
@@ -421,36 +419,46 @@ onBeforeUnmount(() => {
   background: var(--bg-card);
   border: 3px solid var(--border-light);
   border-radius: var(--radius-lg);
-  padding: var(--space-lg);
+  padding: var(--space-md);
   box-shadow: var(--shadow-md);
 
   /* 固定上下布局 */
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  max-height: calc(100vh - 120px);
+  max-height: var(--content-available-height);
 }
 
 .head {
   display: flex;
   justify-content: space-between;
-  gap: var(--space-md);
-  align-items: flex-start;
-  margin-bottom: var(--space-md);
+  gap: var(--space-sm);
+  align-items: center;
+  margin-bottom: var(--space-xs);
+}
+
+.titleWrap {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
 }
 
 h2 {
-  margin: 0 0 6px 0;
-  font-size: var(--font-lg);
+  margin: 0;
+  font-size: var(--font-base);
   font-weight: 900;
   color: var(--text-primary);
   text-shadow: 2px 2px 0 rgba(79, 195, 247, 0.3);
+  white-space: nowrap;
 }
 
 .muted {
   color: var(--text-secondary);
   margin: 0;
-  line-height: 1.4;
+  line-height: 1.2;
+  font-size: var(--font-xs);
+  white-space: nowrap;
 }
 .muted2 { color: var(--text-secondary); }
 .small { font-size: var(--font-sm); }
@@ -616,14 +624,68 @@ h2 {
   gap: 12px;
 }
 
-@media (max-width: 980px) {
-  .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+/* 超小手机 (< 480px) */
+@media (max-width: 479px) {
+  .card {
+    padding: var(--space-sm);
+  }
+
+  h2 {
+    font-size: var(--font-base);
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }
 
-@media (max-width: 640px) {
-  .head { flex-direction: column; align-items: flex-start; }
-  .meta { align-items: flex-start; }
-  .grid { grid-template-columns: 1fr; }
+/* 手机 (480px - 640px) */
+@media (min-width: 480px) and (max-width: 640px) {
+  .card {
+    padding: var(--space-sm);
+  }
+
+  .head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .meta {
+    align-items: flex-start;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 平板竖屏 (641px - 979px) */
+@media (min-width: 641px) and (max-width: 979px) {
+  .card {
+    padding: var(--space-md);
+  }
+
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* 平板横屏/小笔记本 (980px - 1279px) - 关键优化 */
+@media (min-width: 980px) and (max-width: 1279px) {
+  .card {
+    padding: var(--space-md);
+  }
+
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+/* 桌面端及以上 (>= 1280px) */
+@media (min-width: 1280px) {
+  .card {
+    padding: var(--space-lg);
+  }
 }
 
 .clipCard {

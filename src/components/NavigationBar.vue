@@ -58,8 +58,8 @@ const route = useRoute();
 
 // 步骤 Emoji 映射
 const stepEmojis = {
-  photo: '📷',
   dialog: '🎤',
+  characters: '🧚',
   story: '📖',
   split: '✂️',
   images: '🖼️',
@@ -133,6 +133,7 @@ async function handleNext() {
   transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: var(--shadow-button);
   min-width: 120px;
+  white-space: nowrap;
   position: relative;
 }
 
@@ -189,6 +190,9 @@ async function handleNext() {
 
 .nav-btn__text {
   font-size: var(--font-sm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .nav-center {
@@ -198,6 +202,7 @@ async function handleNext() {
   align-items: center;
   gap: var(--space-xs);
   min-width: 0;
+  overflow: hidden;
 }
 
 .nav-step {
@@ -215,12 +220,17 @@ async function handleNext() {
   font-size: var(--font-base);
   font-weight: 800;
   color: var(--text-primary);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .nav-progress {
   font-size: var(--font-xs);
   color: var(--text-secondary);
   font-weight: 600;
+  white-space: nowrap;
 }
 
 /* 超小手机 (< 480px) */

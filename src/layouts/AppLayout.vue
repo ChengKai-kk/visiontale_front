@@ -1,8 +1,10 @@
 <template>
   <div class="app-shell">
     <header class="app-header">
-      <div class="brand">VisionTale</div>
-      <StepProgress />
+      <div class="header-center">
+        <div class="brand">VisionTale</div>
+        <StepProgress />
+      </div>
     </header>
 
     <main class="app-main">

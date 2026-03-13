@@ -98,8 +98,13 @@ body {
   color: var(--text-primary);
   font-size: var(--font-base);
   line-height: 1.6;
+  overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  height: 100%;
 }
 
 a {
@@ -109,7 +114,8 @@ a {
 
 /* ==================== 应用布局 ==================== */
 .app-shell {
-  min-height: 100vh;
+  height: 100dvh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -121,6 +127,7 @@ a {
   display: flex;
   gap: var(--space-md);
   align-items: center;
+  justify-content: center;
   padding: var(--header-padding-v) var(--space-lg);
   min-height: var(--header-height);
 
@@ -135,27 +142,104 @@ a {
   box-shadow: var(--shadow-md);
 }
 
+.header-center {
+  width: 100%;
+  max-width: 980px;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+}
+
 .brand {
   font-weight: 900;
   font-size: var(--font-xl);
   letter-spacing: 1px;
   color: var(--text-white);
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
 }
 
 .app-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
   padding: var(--main-padding-top) var(--space-md) var(--main-padding-bottom);
   max-width: 1400px;
   width: 100%;
   margin: 0 auto;
 }
 
+.app-main > * {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+}
+
+.app-main .page {
+  height: 100%;
+  min-height: 0;
+}
+
+.contentScroll {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  gap: var(--space-md);
+  padding-right: 6px;
+  scrollbar-gutter: stable;
+}
+
+.contentScroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.contentScroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(79, 195, 247, 0.35);
+}
+
+.contentScroll::-webkit-scrollbar-track {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.contentScroll > .toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+}
+
+.titleWrap h1,
+.subtitle,
+.hint,
+.badge,
+.stateTag,
+.roleTag,
+.nav-step__text,
+.nav-progress {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ==================== 顶部进度条 ==================== */
 .stepbar {
-  flex: 1;
+  flex: none;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: var(--space-sm);
+}
+
+.header-center .stepbar {
+  flex: 1;
+  min-width: 0;
+  max-width: 860px;
 }
 
 .stepbar-track {
@@ -313,10 +397,17 @@ a {
   .app-header {
     padding: var(--header-padding-v) var(--space-md);
     gap: var(--space-sm);
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .brand {
     font-size: var(--font-lg);
+    text-align: center;
+  }
+
+  .header-center {
+    width: 100%;
   }
 
   .app-main {
@@ -369,10 +460,17 @@ a {
 
   .app-header {
     padding: var(--header-padding-v) var(--space-md);
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .brand {
     font-size: var(--font-lg);
+    text-align: center;
+  }
+
+  .header-center {
+    width: 100%;
   }
 
   .app-main {
@@ -423,6 +521,7 @@ a {
     max-width: 100%;
     padding: var(--main-padding-top) var(--space-md) var(--main-padding-bottom);
   }
+
 }
 
 /* 平板横屏/小笔记本 (1024px - 1279px) - 关键优化点 */

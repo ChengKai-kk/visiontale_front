@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Demo generated assets may contain signed URLs / key IDs
+public/demo/**/generated-manifest.json

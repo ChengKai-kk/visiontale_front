@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <title>tooth_fairy</title>
+  <rect width="1024" height="1024" rx="48" fill="#fffaf0"/>
+  <image href="./tooth_fairy.png" width="1024" height="1024" preserveAspectRatio="xMidYMid slice"/>
+</svg>
